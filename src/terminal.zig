@@ -1,5 +1,4 @@
 const std = @import("std");
-const Window = @import("window").Window;
 
 pub const Terminal = struct {
     const Self = @This();
@@ -7,28 +6,13 @@ pub const Terminal = struct {
     const posix = std.posix;
 
     stdout: *std.Io.Writer,
-    windows: [10]Window,
-    windows_len: usize,
-    cur_window: ?*Window,
     init_term: posix.termios,
 
-    pub fn init(writer: *std.Io.Writer) Self {
-        return Self{
-            .stdout = writer,
-            .windows = undefined,
-            .windows_len = 0,
-            .cur_window = null,
+    pub fn init(stdout: *std.Io.Writer) Self {
+        return .{
+            .stdout = stdout,
             .init_term = undefined,
         };
-    }
-
-    pub fn newWindow(self: *Self, x_loc: u16, y_loc: u16, rows: u16, cols: u16) ?*Window {
-        if (self.windows_len < 9) {
-            self.windows[self.windows_len] = Window.init(self, x_loc, y_loc, rows, cols);
-            self.windows_len += 1;
-            return &self.windows[self.windows_len - 1];
-        }
-        return null;
     }
 
     pub fn run(self: *Self, code: []const u8) void {
@@ -40,11 +24,11 @@ pub const Terminal = struct {
     }
 
     pub fn moveCursorTo(self: *Self, x_loc: u16, y_loc: u16) !void {
-        try self.stdout.print("\x1b[{d};{d}H", .{x_loc, y_loc});
+        try self.stdout.print("\x1b[{d};{d}H", .{x_loc + 1, y_loc + 1});
     }
 
     pub fn placeCharAt(self: *Self, x_loc: u16, y_loc: u16, char: u8) !void {
-        try self.stdout.print("\x1b[{d};{d}H{c}", .{x_loc, y_loc, char});
+        try self.stdout.print("\x1b[{};{d}H{c}", .{x_loc + 1, y_loc + 1, char});
     }
 
     pub fn flush(self: *Self) void {

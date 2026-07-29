@@ -18,13 +18,19 @@ pub fn build(b : *std.Build) void {
         .root_source_file = b.path("./src/cursor.zig"),
     });
 
+    const winman = b.createModule(.{
+        .root_source_file = b.path("./src/winman.zig"),
+    });
+
     app.addImport("terminal", terminal);
     app.addImport("window", window);
-
-    terminal.addImport("window", window);
+    app.addImport("winman", winman);
 
     window.addImport("terminal", terminal);
     window.addImport("cursor", cursor);
+
+    winman.addImport("terminal", terminal);
+    winman.addImport("window", window);
 
     const main = b.addExecutable(.{
         .name = "math",

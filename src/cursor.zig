@@ -7,7 +7,7 @@ pub const Cursor = struct {
     x_loc: u32,
     y_loc: u32,
 
-    pub fn init(stdout: *std.Io.Writer) void {
+    pub fn init(stdout: *std.Io.Writer) Self {
         return .{
             .stdout = stdout,
             .x_loc = 0,
