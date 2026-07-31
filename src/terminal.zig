@@ -23,12 +23,12 @@ pub const Terminal = struct {
         self.run(clear_terminal_cc);
     }
 
-    pub fn moveCursorTo(self: *Self, x_loc: u16, y_loc: u16) !void {
-        try self.stdout.print("\x1b[{d};{d}H", .{x_loc + 1, y_loc + 1});
+    pub fn moveCursorTo(self: *Self, row: u16, col: u16) !void {
+        try self.stdout.print("\x1b[{d};{d}H", .{row + 1, col + 1});
     }
 
-    pub fn placeCharAt(self: *Self, x_loc: u16, y_loc: u16, char: u8) !void {
-        try self.stdout.print("\x1b[{};{d}H{c}", .{x_loc + 1, y_loc + 1, char});
+    pub fn placeCharAt(self: *Self, row: u16, col: u16, char: u8) !void {
+        try self.stdout.print("\x1b[{d};{d}H{c}", .{row + 1, col + 1, char});
     }
 
     pub fn flush(self: *Self) void {
@@ -60,11 +60,11 @@ pub const Terminal = struct {
         };
     }
 
-    pub fn getSize(self: *Self) !struct { rows: u16, cols: u16 } {
+    pub fn getSize(self: *Self) struct { rows: u16, cols: u16 } {
         _ = self;
         var ws: posix.winsize = undefined;
         const err = posix.system.ioctl(posix.STDIN_FILENO, posix.T.IOCGWINSZ, @intFromPtr(&ws));
-        if (err != 0) return error.IoctlFailed;
+        if (err != 0) unreachable;
         return .{ .rows = ws.row, .cols = ws.col };
     }
 

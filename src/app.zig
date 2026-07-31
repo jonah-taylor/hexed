@@ -1,6 +1,7 @@
 const std = @import("std");
 const Terminal = @import("terminal").Terminal;
 const Winman = @import("winman").Winman;
+const Direction = @import("winman").Direction;
 const Window = @import("window").Window;
 
 pub const App = struct {
@@ -21,28 +22,32 @@ pub const App = struct {
     }
 
     pub fn run(self: *Self) !void {
+        // setup
         try self.term.enableRaw();
         defer self.term.disableRaw();
 
         self.winman.term = &self.term;
         self.term.clearTerminal();
 
-        // get window
-        const grid = try self.term.getSize();
-        var win: *Window = self.winman.newWindow(0, 0, grid.rows, grid.cols).?;
-        try win.drawBorder();
+        // first window
+        self.winman.newWindow(Direction.up); // first window
 
-        try self.term.moveCursorTo(1, 1);
-
-        self.term.flush();
-
+        // main loop
+        var c: u8 = 'u';
         while (true) {
-            const c = try self.term.getch();
-            if (c == 'q') break;
-            try self.stdout.print("{c}", .{c});
-
+            // try self.stdout.print("{c}", .{c});
+            switch (c) {
+                'h' => self.winman.newWindow(Direction.left),
+                'j' => self.winman.newWindow(Direction.down),
+                'k' => self.winman.newWindow(Direction.up),
+                'l' => self.winman.newWindow(Direction.right),
+                else => {}
+            }
+            try self.winman.drawWindows();
             self.term.flush();
+
+            if (c == 'q') break;
+            c = try self.term.getch();
         }
     }
-
 };

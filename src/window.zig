@@ -20,23 +20,28 @@ pub const Window = struct {
             .cursor = Cursor.init(stdout),
             .x_loc = x_loc,
             .y_loc = y_loc,
-            .cols = rows,
-            .rows = cols,
+            .cols = cols,
+            .rows = rows,
+        };
+    }
+
+    pub fn getRegion(self: *Self) struct { x_loc: u16, y_loc: u16, rows: u16, cols: u16 } {
+        return .{
+            .x_loc = self.x_loc,
+            .y_loc = self.y_loc,
+            .rows = self.rows,
+            .cols = self.cols,
         };
     }
 
     pub fn drawBorder(self: *Self) !void {
-        for (0..self.cols) |x| {
-            try self.term.placeCharAt(@as(u16, @intCast(x)), 0, '#');
-            try self.term.placeCharAt(@as(u16, @intCast(x)), self.rows, '#');
+        for (0..self.cols) |col| {
+            try self.term.placeCharAt(self.y_loc, self.x_loc + @as(u16, @intCast(col)), '#');
+            try self.term.placeCharAt(self.y_loc + self.rows - 1, self.x_loc + @as(u16, @intCast(col)), '#');
         }
-        for (0..self.rows) |y| {
-            try self.term.placeCharAt(0, @as(u16, @intCast(y)), '#');
-            try self.term.placeCharAt(self.cols, @as(u16, @intCast(y)), '#');
+        for (0..self.rows) |row| {
+            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc, '#');
+            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc + self.cols - 1, '#');
         }
-    }
-
-    pub fn getSize(self: *Self) !struct { rows: u16, cols: u16 } {
-        return .{ .rows = self.rows, .cols = self.cols };
     }
 };
