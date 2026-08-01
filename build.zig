@@ -26,9 +26,10 @@ pub fn build(b : *std.Build) void {
     app.addImport("window", window);
     app.addImport("winman", winman);
 
-    window.addImport("terminal", terminal);
     window.addImport("cursor", cursor);
+    window.addImport("terminal", terminal);
 
+    winman.addImport("cursor", cursor);
     winman.addImport("terminal", terminal);
     winman.addImport("window", window);
 

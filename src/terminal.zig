@@ -15,12 +15,12 @@ pub const Terminal = struct {
         };
     }
 
-    pub fn run(self: *Self, code: []const u8) void {
-        self.stdout.print("{s}", .{code}) catch unreachable;
+    pub fn run(self: *Self, code: []const u8) !void {
+        try self.stdout.print("{s}", .{code});
     }
 
-    pub fn clearTerminal(self: *Self) void {
-        self.run(clear_terminal_cc);
+    pub fn clearTerminal(self: *Self) !void {
+        try self.run(clear_terminal_cc);
     }
 
     pub fn moveCursorTo(self: *Self, row: u16, col: u16) !void {
@@ -31,8 +31,16 @@ pub const Terminal = struct {
         try self.stdout.print("\x1b[{d};{d}H{c}", .{row + 1, col + 1, char});
     }
 
+    pub fn saveCursorPos(self: *Self) !void {
+        try self.run("\x1b[s");
+    }
+
+    pub fn loadCursorPos(self: *Self) !void {
+        try self.run("\x1b[u");
+    }
+
     pub fn flush(self: *Self) void {
-        self.stdout.flush() catch unreachable;
+        self.stdout.flush() catch return;
     }
 
     pub fn disableRaw(self: *Self) void {

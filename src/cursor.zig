@@ -4,8 +4,8 @@ pub const Cursor = struct {
     const Self = @This();
 
     stdout: *std.Io.Writer,
-    x_loc: u32,
-    y_loc: u32,
+    x_loc: u16,
+    y_loc: u16,
 
     pub fn init(stdout: *std.Io.Writer) Self {
         return .{
@@ -14,10 +14,4 @@ pub const Cursor = struct {
             .y_loc = 0,
         };
     }
-
-    pub fn moveTo(self: *Self, x_loc: u32, y_loc: u32) void {
-        self.x_loc = x_loc;
-        self.y_loc = y_loc;
-    }
-
 };

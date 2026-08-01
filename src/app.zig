@@ -27,27 +27,43 @@ pub const App = struct {
         defer self.term.disableRaw();
 
         self.winman.term = &self.term;
-        self.term.clearTerminal();
+        try self.term.clearTerminal();
 
         // first window
-        self.winman.newWindow(Direction.up); // first window
+        try self.winman.newWindow(Direction.up); // first window
 
-        // main loop
-        var c: u8 = 'u';
-        while (true) {
-            // try self.stdout.print("{c}", .{c});
-            switch (c) {
-                'h' => self.winman.newWindow(Direction.left),
-                'j' => self.winman.newWindow(Direction.down),
-                'k' => self.winman.newWindow(Direction.up),
-                'l' => self.winman.newWindow(Direction.right),
+        try self.winman.drawWindows();
+        self.term.flush();
+
+        var key: u8 = '.';
+        mainloop: while (true) {
+            key = try self.term.getch();
+            try switch (key) {
+                'q' => break :mainloop,
+
+                'h' => try self.winman.newWindow(Direction.left),
+                'j' => try self.winman.newWindow(Direction.down),
+                'k' => try self.winman.newWindow(Direction.up),
+                'l' => try self.winman.newWindow(Direction.right),
+                'H' => self.winman.changeCurWindow(Direction.left),
+                'J' => self.winman.changeCurWindow(Direction.down),
+                'K' => self.winman.changeCurWindow(Direction.up),
+                'L' => self.winman.changeCurWindow(Direction.right),
+
+                // 'w' => try self.changeCurWindow(),
                 else => {}
-            }
+            };
+
             try self.winman.drawWindows();
             self.term.flush();
 
-            if (c == 'q') break;
-            c = try self.term.getch();
         }
     }
+
+    // fn changeCurWindow(self: *Self) !void {
+    //     const key = try self.term.getch();
+    //     try switch (key) {
+    //         else => {},
+    //     };
+    // }
 };
