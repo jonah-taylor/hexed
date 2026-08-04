@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const Terminal = struct {
     const Self = @This();
-    const clear_terminal_cc = "\x1b[2J";
+    const clear_cc = "\x1b[2J";
     const posix = std.posix;
 
     stdout: *std.Io.Writer,
@@ -19,8 +19,8 @@ pub const Terminal = struct {
         try self.stdout.print("{s}", .{code});
     }
 
-    pub fn clearTerminal(self: *Self) !void {
-        try self.run(clear_terminal_cc);
+    pub fn clear(self: *Self) !void {
+        try self.run(clear_cc);
     }
 
     pub fn moveCursorTo(self: *Self, row: u16, col: u16) !void {
