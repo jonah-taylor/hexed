@@ -1,5 +1,6 @@
 const std = @import("std");
 const App = @import("app").App;
+const Terminal = @import("terminal").Terminal;
 
 pub fn main(init: std.process.Init) !void {
     var stdout_buf: [1024]u8 = undefined;
@@ -7,6 +8,9 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
     const alloc = std.heap.page_allocator;
 
-    var app = App.init(stdout, alloc);
+    var term = Terminal.init(stdout);
+    var app = App.init(stdout, alloc, &term);
+    defer app.deinit();
+
     try app.run();
 }

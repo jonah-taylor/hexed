@@ -12,17 +12,18 @@ pub const Direction = enum {
 
 pub const WinMan = struct {
     const Self = @This();
+    const maxWins = 16;
 
     stdout: *std.Io.Writer,
     term: *Terminal,
-    wins: [16]Window,
+    wins: [maxWins]Window,
     wins_len: usize,
     win_idx: ?usize,
 
-    pub fn init(stdout: *std.Io.Writer) Self {
+    pub fn init(stdout: *std.Io.Writer, term: *Terminal) Self {
         return Self{
             .stdout = stdout,
-            .term = undefined,
+            .term = term,
             .wins = undefined,
             .wins_len = 0,
             .win_idx = null,
@@ -37,7 +38,7 @@ pub const WinMan = struct {
         try self.term.loadCursorPos();
     }
 
-    pub fn getWinIdxAt(self: *Self, x_loc: u16, y_loc: u16) ?usize {
+    pub fn winIdxFromPoint(self: *Self, x_loc: u16, y_loc: u16) ?usize {
         for (0..self.wins_len) |i| {
             if (self.wins[i].hasCoord(x_loc, y_loc)) {
                 return i;
@@ -101,12 +102,12 @@ pub const WinMan = struct {
         try self.term.moveCursorTo(cur.y_loc + cursor.y_loc, cur.x_loc + cursor.x_loc);
     }
 
-    pub fn getWinIdxsInDirOfWin(self: *Self, dir: Direction, base_idx: usize, out: *[self.wins.len]usize) ?usize {
+    pub fn winIdxsFromDirWin(self: *Self, dir: Direction, base_idx: usize, out: *[self.wins.len]usize) ?usize {
         const win: *Window = &self.wins[base_idx];
         var out_idx: usize = 0;
 
         // get first window
-        var side_idx: usize = self.getWinIdxInDir(dir, win.x_loc, win.y_loc) orelse {
+        var side_idx: usize = self.winIdxFromDirPoint(dir, win.x_loc, win.y_loc) orelse {
             return null;
         };
 
@@ -122,7 +123,7 @@ pub const WinMan = struct {
                 while (true) {
                     const y: u16 = if (dir == .up) side_win.y_loc + side_win.rows - 1 else side_win.y_loc;
 
-                    side_idx = self.getWinIdxInDir(.right, side_win.x_loc, y) orelse break;
+                    side_idx = self.winIdxFromDirPoint(.right, side_win.x_loc, y) orelse break;
                     out[out_idx] = side_idx;
                     side_win = &self.wins[side_idx];
                     out_idx += 1;
@@ -137,7 +138,7 @@ pub const WinMan = struct {
                 while (true) {
                     const x: u16 = if (dir == .left) side_win.x_loc + side_win.cols - 1 else side_win.x_loc;
 
-                    side_idx = self.getWinIdxInDir(.down, x, side_win.y_loc) orelse break;
+                    side_idx = self.winIdxFromDirPoint(.down, x, side_win.y_loc) orelse break;
                     out[out_idx] = side_idx;
                     side_win = &self.wins[side_idx];
                     out_idx += 1;
@@ -151,7 +152,7 @@ pub const WinMan = struct {
         return out_idx;
     }
 
-    pub fn delSel(self: *Self) !void {
+    pub fn rmWin(self: *Self) !void {
         const food_idx: usize = self.win_idx orelse return;
         const food: *Window = &self.wins[food_idx];
 
@@ -161,7 +162,7 @@ pub const WinMan = struct {
 
         for (std.enums.values(Direction)) |d| {
             dir = d;
-            consumers = self.getWinIdxsInDirOfWin(dir, food_idx, &buf) orelse continue;
+            consumers = self.winIdxsFromDirWin(dir, food_idx, &buf) orelse continue;
             break;
         } else return;
 
@@ -187,24 +188,24 @@ pub const WinMan = struct {
         try self.setWin(if (buf[0] == self.wins_len) food_idx else buf[0]);
     }
 
-    pub fn selInDir(self: *Self, dir: Direction) !void {
+    pub fn setWinFromDir(self: *Self, dir: Direction) !void {
         const win: *Window = &self.wins[self.win_idx orelse return];
         const cursor: *Cursor = &win.cursor;
         const win_idx: usize =
-            self.getWinIdxInDir(dir, win.x_loc + cursor.x_loc, win.y_loc + cursor.y_loc)
+            self.winIdxFromDirPoint(dir, win.x_loc + cursor.x_loc, win.y_loc + cursor.y_loc)
             orelse return;
 
         try self.setWin(win_idx);
     }
 
-    fn getWinIdxInDir(self: *Self, dir: Direction, x_loc: u16, y_loc: u16) ?usize {
-        const coord_idx = self.getWinIdxAt(x_loc, y_loc) orelse return null;
+    fn winIdxFromDirPoint(self: *Self, dir: Direction, x_loc: u16, y_loc: u16) ?usize {
+        const coord_idx = self.winIdxFromPoint(x_loc, y_loc) orelse return null;
         const win: *Window = &self.wins[coord_idx];
          return switch (dir) {
-            .up => return self.getWinIdxAt(x_loc, win.y_loc -% 1),
-            .down => self.getWinIdxAt(x_loc, win.y_loc + win.rows),
-            .left => self.getWinIdxAt(win.x_loc -% 1, y_loc),
-            .right => self.getWinIdxAt(win.x_loc + win.cols, y_loc),
+            .up => return self.winIdxFromPoint(x_loc, win.y_loc -% 1),
+            .down => self.winIdxFromPoint(x_loc, win.y_loc + win.rows),
+            .left => self.winIdxFromPoint(win.x_loc -% 1, y_loc),
+            .right => self.winIdxFromPoint(win.x_loc + win.cols, y_loc),
         };
     }
 };

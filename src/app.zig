@@ -9,23 +9,26 @@ pub const App = struct {
 
     alloc: std.mem.Allocator,
     stdout: *std.Io.Writer,
-    term: Terminal,
+    term: *Terminal,
     winman: WinMan,
 
-    pub fn init(stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
+    pub fn init(stdout: *std.Io.Writer, alloc: std.mem.Allocator, term: *Terminal) Self {
         return .{
             .alloc = alloc,
             .stdout = stdout,
-            .term = Terminal.init(stdout),
-            .winman = WinMan.init(stdout),
+            .term = term,
+            .winman = WinMan.init(stdout, term),
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.alloc.destroy(self);
     }
 
     pub fn run(self: *Self) !void {
         try self.term.enableRaw();
         defer self.term.disableRaw();
 
-        self.winman.term = &self.term;
         try self.term.clear();
 
         try self.winman.newWin(Direction.up);
@@ -43,12 +46,12 @@ pub const App = struct {
                 'j' => try self.winman.newWin(Direction.down),
                 'k' => try self.winman.newWin(Direction.up),
                 'l' => try self.winman.newWin(Direction.right),
-                'H' => self.winman.selInDir(Direction.left),
-                'J' => self.winman.selInDir(Direction.down),
-                'K' => self.winman.selInDir(Direction.up),
-                'L' => self.winman.selInDir(Direction.right),
+                'H' => self.winman.setWinFromDir(Direction.left),
+                'J' => self.winman.setWinFromDir(Direction.down),
+                'K' => self.winman.setWinFromDir(Direction.up),
+                'L' => self.winman.setWinFromDir(Direction.right),
                 'd' => {
-                    try self.winman.delSel();
+                    try self.winman.rmWin();
                     try self.term.clear();
                 },
                 else => {}
