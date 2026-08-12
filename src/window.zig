@@ -43,12 +43,12 @@ pub const Window = struct {
 
     pub fn drawBorder(self: *Self) !void {
         for (0..self.cols) |col| {
-            try self.term.placeCharAt(self.y_loc, self.x_loc + @as(u16, @intCast(col)), '#');
-            try self.term.placeCharAt(self.y_loc + self.rows - 1, self.x_loc + @as(u16, @intCast(col)), '#');
+            // try self.term.placeCharAt(self.y_loc, self.x_loc + @as(u16, @intCast(col)), '#');
+            try self.term.placeCharAt(self.y_loc + self.rows - 1, self.x_loc + @as(u16, @intCast(col)), '_');
         }
         for (0..self.rows) |row| {
-            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc, '#');
-            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc + self.cols - 1, '#');
+            // try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc, '#');
+            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc + self.cols - 1, '|');
         }
     }
 };

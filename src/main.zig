@@ -10,7 +10,6 @@ pub fn main(init: std.process.Init) !void {
 
     var term = Terminal.init(stdout);
     var app = App.init(stdout, alloc, &term);
-    defer app.deinit();
 
     try app.run();
 }

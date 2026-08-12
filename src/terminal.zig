@@ -27,6 +27,14 @@ pub const Terminal = struct {
         try self.stdout.print("\x1b[{d};{d}H", .{row + 1, col + 1});
     }
 
+    pub fn setRed(self: *Self) !void {
+        try self.stdout.print("\x1b[31m", .{});
+    }
+
+    pub fn colorReset(self: *Self) !void {
+        try self.stdout.print("\x1b[0m", .{});
+    }
+
     pub fn placeCharAt(self: *Self, row: u16, col: u16, char: u8) !void {
         try self.stdout.print("\x1b[{d};{d}H{c}", .{row + 1, col + 1, char});
     }
