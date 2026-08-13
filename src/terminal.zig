@@ -61,13 +61,16 @@ pub const Terminal = struct {
         var raw_term = self.init_term;
         raw_term.lflag.ECHO = false; // don't echo chars
         raw_term.lflag.ICANON = false; // read input by bytes
-        raw_term.lflag.ISIG = false; // capture ctrl c
+        raw_term.lflag.ISIG = false; // disable ctrl z and c
+        // raw_term.cc[@intFromEnum(std.posix.V.INTR)] = 0; // disable ctrl c
         raw_term.iflag.IXON = false; // disable ctrl s/q
 
         try posix.tcsetattr(posix.STDIN_FILENO, .FLUSH, raw_term);
     }
 
-    pub fn getch(self: *Self) !u8 {
+    pub fn getch(self: *Self)
+    !u8 {
+
         _ = self;
         return while (true) {
             var buf: [1]u8 = undefined;
@@ -76,12 +79,42 @@ pub const Terminal = struct {
         };
     }
 
-    pub fn getSize(self: *Self) struct { rows: u16, cols: u16 } {
+    pub fn getSize(self: *Self)
+    struct { rows: u16, cols: u16 } {
+
         _ = self;
         var ws: posix.winsize = undefined;
         const err = posix.system.ioctl(posix.STDIN_FILENO, posix.T.IOCGWINSZ, @intFromPtr(&ws));
         if (err != 0) unreachable;
         return .{ .rows = ws.row, .cols = ws.col };
+    }
+
+    pub fn fixedFromPercX(self: *Self, x: u16)
+    u16 {
+
+        const dim = self.getSize();
+        return x * dim.cols / 300;
+    }
+
+    pub fn fixedFromPercY(self: *Self, y: u16)
+    u16 {
+
+        const dim = self.getSize();
+        return y * dim.rows / 300;
+    }
+
+    pub fn percFromFixedX(self: *Self, x: u16)
+    u16 {
+
+        const dim = self.getSize();
+        return x * 300 / dim.cols;
+    }
+
+    pub fn percFromFixedY(self: *Self, y: u16)
+    u16 {
+
+        const dim = self.getSize();
+        return y * 300 / dim.rows;
     }
 
 };

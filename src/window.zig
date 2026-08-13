@@ -8,47 +8,54 @@ pub const Window = struct {
     stdout: *std.Io.Writer,
     term: *Terminal,
     cursor: Cursor,
-    x_loc: u16,
-    y_loc: u16,
-    rows: u16,
-    cols: u16,
+    x1: u16,
+    y1: u16,
+    x2: u16,
+    y2: u16,
 
-    pub fn init(stdout: *std.Io.Writer, term: *Terminal, x_loc: u16, y_loc: u16, rows: u16, cols: u16) Self {
+    pub fn init(stdout: *std.Io.Writer, term: *Terminal, x1: u16, y1: u16, x2: u16, y2: u16) Self {
         return .{
             .stdout = stdout,
             .term = term,
             .cursor = Cursor.init(stdout),
-            .x_loc = x_loc,
-            .y_loc = y_loc,
-            .cols = cols,
-            .rows = rows,
+            .x1 = x1,
+            .y1 = y1,
+            .x2 = x2,
+            .y2 = y2,
         };
     }
 
-    pub fn getRegion(self: *Self) struct { x_loc: u16, y_loc: u16, rows: u16, cols: u16 } {
+    pub fn getRegion(self: *Self) struct { x1: u16, y1: u16, x2: u16, y2: u16 } {
         return .{
-            .x_loc = self.x_loc,
-            .y_loc = self.y_loc,
-            .rows = self.rows,
-            .cols = self.cols,
+            .x1 = self.x1,
+            .y1 = self.y1,
+            .x2 = self.x2,
+            .y2 = self.y2,
         };
     }
 
-    pub fn hasCoord(self: *Self, x_loc: u16, y_loc: u16) bool {
-        return  self.x_loc <= x_loc and 
-                self.x_loc + self.cols - 1 >= x_loc and
-                self.y_loc <= y_loc and 
-                self.y_loc + self.rows - 1 >= y_loc;
+    pub fn hasCoord(self: *Self, x: u16, y: u16) bool {
+        return  x >= self.x1
+            and x <= self.x2
+            and y >= self.y1
+            and y <= self.y2;
     }
 
-    pub fn drawBorder(self: *Self) !void {
-        for (0..self.cols) |col| {
-            // try self.term.placeCharAt(self.y_loc, self.x_loc + @as(u16, @intCast(col)), '#');
-            try self.term.placeCharAt(self.y_loc + self.rows - 1, self.x_loc + @as(u16, @intCast(col)), '_');
+    pub fn drawBorder(self: *Self)
+    !void {
+
+        const prop_x1 = self.term.fixedFromPercX(self.x1);
+        const prop_y1 = self.term.fixedFromPercY(self.y1);
+        const prop_x2 = self.term.fixedFromPercX(self.x2);
+        const prop_y2 = self.term.fixedFromPercY(self.y2);
+
+        for (0..prop_x2 - prop_x1) |x| {
+            try self.term.placeCharAt(prop_y1, prop_x1 + @as(u16, @intCast(x)), '+');
+            try self.term.placeCharAt(prop_y2, prop_x1 + @as(u16, @intCast(x)), '+');
         }
-        for (0..self.rows) |row| {
-            // try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc, '#');
-            try self.term.placeCharAt(self.y_loc + @as(u16, @intCast(row)), self.x_loc + self.cols - 1, '|');
+        for (0..prop_y2 - prop_y1) |y| {
+            try self.term.placeCharAt(prop_y1 + @as(u16, @intCast(y)), prop_x1, '+');
+            try self.term.placeCharAt(prop_y1 + @as(u16, @intCast(y)), prop_x2, '+');
         }
     }
 };

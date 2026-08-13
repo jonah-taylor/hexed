@@ -43,6 +43,7 @@ pub fn build(b : *std.Build) void {
     main.addImport("app", app);
     main.addImport("terminal", terminal);
 
+    app.addImport("cursor", cursor);
     app.addImport("terminal", terminal);
     app.addImport("window", window);
     app.addImport("winman", winman);
