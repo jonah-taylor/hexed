@@ -19,12 +19,12 @@ pub const Terminal = struct {
         try self.stdout.print("{s}", .{code});
     }
 
-    pub fn clear(self: *Self) !void {
-        try self.run(clear_cc);
+    pub fn clear(self: *Self) void {
+        self.run(clear_cc) catch {};
     }
 
     pub fn moveCursorTo(self: *Self, row: u16, col: u16) !void {
-        try self.stdout.print("\x1b[{d};{d}H", .{row + 1, col + 1});
+        try self.stdout.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
     }
 
     pub fn setRed(self: *Self) !void {
@@ -36,7 +36,7 @@ pub const Terminal = struct {
     }
 
     pub fn placeCharAt(self: *Self, row: u16, col: u16, char: u8) !void {
-        try self.stdout.print("\x1b[{d};{d}H{c}", .{row + 1, col + 1, char});
+        try self.stdout.print("\x1b[{d};{d}H{c}", .{ row + 1, col + 1, char });
     }
 
     pub fn saveCursorPos(self: *Self) !void {
@@ -68,9 +68,7 @@ pub const Terminal = struct {
         try posix.tcsetattr(posix.STDIN_FILENO, .FLUSH, raw_term);
     }
 
-    pub fn getch(self: *Self)
-    !u8 {
-
+    pub fn getch(self: *Self) !u8 {
         _ = self;
         return while (true) {
             var buf: [1]u8 = undefined;
@@ -79,9 +77,7 @@ pub const Terminal = struct {
         };
     }
 
-    pub fn getSize(self: *Self)
-    struct { rows: u16, cols: u16 } {
-
+    pub fn getSize(self: *Self) struct { rows: u16, cols: u16 } {
         _ = self;
         var ws: posix.winsize = undefined;
         const err = posix.system.ioctl(posix.STDIN_FILENO, posix.T.IOCGWINSZ, @intFromPtr(&ws));
@@ -89,32 +85,23 @@ pub const Terminal = struct {
         return .{ .rows = ws.row, .cols = ws.col };
     }
 
-    pub fn fixedFromPercX(self: *Self, x: u16)
-    u16 {
-
+    pub fn fixedFromPercX(self: *Self, x: u16) u16 {
         const dim = self.getSize();
-        return x * dim.cols / 300;
+        return x * dim.cols / 256;
     }
 
-    pub fn fixedFromPercY(self: *Self, y: u16)
-    u16 {
-
+    pub fn fixedFromPercY(self: *Self, y: u16) u16 {
         const dim = self.getSize();
-        return y * dim.rows / 300;
+        return y * dim.rows / 256;
     }
 
-    pub fn percFromFixedX(self: *Self, x: u16)
-    u16 {
-
+    pub fn percFromFixedX(self: *Self, x: u16) u16 {
         const dim = self.getSize();
-        return x * 300 / dim.cols;
+        return x * 256 / dim.cols;
     }
 
-    pub fn percFromFixedY(self: *Self, y: u16)
-    u16 {
-
+    pub fn percFromFixedY(self: *Self, y: u16) u16 {
         const dim = self.getSize();
-        return y * 300 / dim.rows;
+        return y * 256 / dim.rows;
     }
-
 };

@@ -37,7 +37,7 @@ pub const App = struct {
         try self.term.enableRaw();
         defer self.term.disableRaw();
 
-        try self.term.clear();
+        self.term.clear();
 
         try self.winman.newWin(Direction.up);
 
@@ -55,7 +55,7 @@ pub const App = struct {
                     switch (self.cur_state) {
                         // .normal => self.winman.newWin(Direction.left) catch {},
                         .resize => try self.winman.resizeWin(Direction.left, self.winman.win_idx, true),
-                        else => {}
+                        else => {},
                     }
                 },
                 'H' => self.winman.setWinFromDir(Direction.left),
@@ -63,7 +63,7 @@ pub const App = struct {
                     switch (self.cur_state) {
                         // .normal => self.winman.newWin(Direction.down) catch {},
                         .resize => try self.winman.resizeWin(Direction.down, self.winman.win_idx, true),
-                        else => {}
+                        else => {},
                     }
                 },
                 'J' => self.winman.setWinFromDir(Direction.down),
@@ -71,7 +71,7 @@ pub const App = struct {
                     switch (self.cur_state) {
                         // .normal => self.winman.newWin(Direction.up) catch {},
                         .resize => try self.winman.resizeWin(Direction.up, self.winman.win_idx, true),
-                        else => {}
+                        else => {},
                     }
                 },
                 'K' => self.winman.setWinFromDir(Direction.up),
@@ -79,18 +79,45 @@ pub const App = struct {
                     switch (self.cur_state) {
                         // .normal => self.winman.newWin(Direction.right) catch {},
                         .resize => try self.winman.resizeWin(Direction.right, self.winman.win_idx, true),
-                        else => {}
+                        else => {},
                     }
                 },
                 'L' => self.winman.setWinFromDir(Direction.right),
-                'd' => {
-                    if (!try self.winman.rmWin())
-                        break :mainloop;
-                    try self.term.clear();
+                'q' => {
+                    self.term.clear();
+                    try self.term.moveCursorTo(0, 0);
+                    self.term.flush();
+                    break :mainloop;
                 },
                 'w' => {
                     key = try self.term.getch();
                     switch (key) {
+                        'c' => {
+                            key = try self.term.getch();
+                            switch (key) {
+                                'k' => {
+                                    _ = self.winman.rotateInDir(Direction.up, self.winman.win_idx orelse continue) catch {};
+                                    self.term.clear();
+                                },
+                                'j' => {
+                                    _ = self.winman.rotateInDir(Direction.down, self.winman.win_idx orelse continue) catch {};
+                                    self.term.clear();
+                                },
+                                'h' => {
+                                    _ = self.winman.rotateInDir(Direction.left, self.winman.win_idx orelse continue) catch {};
+                                    self.term.clear();
+                                },
+                                'l' => {
+                                    _ = self.winman.rotateInDir(Direction.right, self.winman.win_idx orelse continue) catch {};
+                                    self.term.clear();
+                                },
+                                else => {},
+                            }
+                        },
+                        'd' => {
+                            _ = try self.winman.rmWin();
+                            self.term.clear();
+                        },
                         'h' => self.winman.newWin(Direction.left) catch {},
                         'j' => self.winman.newWin(Direction.down) catch {},
                         'k' => self.winman.newWin(Direction.up) catch {},
@@ -102,25 +129,33 @@ pub const App = struct {
                                 self.cur_state = .resize;
                             }
                         },
-                        else => {}
+                        's' => {
+                            key = try self.term.getch();
+                            switch (key) {
+                                'k' => self.winman.swapWinInDir(Direction.up) catch {},
+                                'j' => self.winman.swapWinInDir(Direction.down) catch {},
+                                'h' => self.winman.swapWinInDir(Direction.left) catch {},
+                                'l' => self.winman.swapWinInDir(Direction.right) catch {},
+                                else => {},
+                            }
+                        },
+                        else => {},
                     }
                 },
-                else => {}
+                else => {},
             };
 
             if (self.cur_state == .resize) {
-                try self.term.clear();
+                self.term.clear();
                 try self.term.setRed();
             }
 
             term_sz = self.term.getSize();
             if (term_sz.cols != prev_term_sz.cols or term_sz.rows != prev_term_sz.rows) {
-                try self.term.clear();
+                self.term.clear();
                 const win = &self.winman.wins[self.winman.win_idx orelse return];
                 const cursor = &win.cursor;
-                try self.term.moveCursorTo(
-                    self.term.fixedFromPercY(win.y1) + cursor.y,
-                    win.x1 + cursor.x);
+                try self.term.moveCursorTo(self.term.fixedFromPercY(win.y1) + cursor.y, win.x1 + cursor.x);
             }
             prev_term_sz = term_sz;
 
@@ -130,7 +165,6 @@ pub const App = struct {
                 try self.term.colorReset();
 
             self.term.flush();
-
         }
     }
 };

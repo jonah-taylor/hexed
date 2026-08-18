@@ -35,19 +35,16 @@ pub const Window = struct {
     }
 
     pub fn hasCoord(self: *Self, x: u16, y: u16) bool {
-        return  x >= self.x1
-            and x <= self.x2
-            and y >= self.y1
-            and y <= self.y2;
+        return x >= self.x1 and x <= self.x2 and y >= self.y1 and y <= self.y2;
     }
 
-    pub fn drawBorder(self: *Self)
-    !void {
-
+    pub fn drawBorder(self: *Self, idx: usize) !void {
         const prop_x1 = self.term.fixedFromPercX(self.x1);
         const prop_y1 = self.term.fixedFromPercY(self.y1);
         const prop_x2 = self.term.fixedFromPercX(self.x2);
         const prop_y2 = self.term.fixedFromPercY(self.y2);
+
+        try self.term.placeCharAt(prop_y1 + 2, prop_x1 + 2, '0' + @as(u8, @truncate(idx)));
 
         for (0..prop_x2 - prop_x1) |x| {
             try self.term.placeCharAt(prop_y1, prop_x1 + @as(u16, @intCast(x)), '+');
