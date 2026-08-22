@@ -2,7 +2,13 @@ const std = @import("std");
 const Cursor = @import("cursor").Cursor;
 const Terminal = @import("terminal").Terminal;
 
-pub const Window = struct {
+// const Display = union(enum) {
+//     text_win: TextWin,
+//     file_win: FileWin,
+//     buf_win: BufWin,
+// };
+
+pub const Tile = struct {
     const Self = @This();
 
     stdout: *std.Io.Writer,
@@ -22,15 +28,6 @@ pub const Window = struct {
             .y1 = y1,
             .x2 = x2,
             .y2 = y2,
-        };
-    }
-
-    pub fn getRegion(self: *Self) struct { x1: u16, y1: u16, x2: u16, y2: u16 } {
-        return .{
-            .x1 = self.x1,
-            .y1 = self.y1,
-            .x2 = self.x2,
-            .y2 = self.y2,
         };
     }
 
