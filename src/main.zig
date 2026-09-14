@@ -1,7 +1,8 @@
 const std = @import("std");
 const term = @import("./terminal.zig");
 
-const App = @import("./app.zig").App;
+const app_ops = @import("./app.zig");
+const App = app_ops.App;
 
 pub fn main(init: std.process.Init) !void {
     var stdout_buf: [1024]u8 = undefined;
@@ -17,5 +18,5 @@ pub fn main(init: std.process.Init) !void {
 
     var app = App.init(stdout, alloc);
 
-    try app.run();
+    try app_ops.runApp(&app);
 }
