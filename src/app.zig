@@ -4,36 +4,54 @@ const term = @import("./terminal.zig");
 const Cursor = @import("./cursor.zig").Cursor;
 const Direction = @import("./geometry.zig").Direction;
 const Rectangle = @import("./geometry.zig").Rectangle;
-const Tile = @import("./tiles/tile.zig").Tile;
+
+const tile_ops = @import("./tiles/tile.zig");
+const Tile = tile_ops.Tile;
 
 const tiler_ops = @import("./tiler.zig");
 const Tiler = tiler_ops.Tiler;
 
+
 pub const App = struct {
     const Self = @This();
 
-    const State = enum {
+    pub const State = enum {
         normal,
         resize,
     };
 
+    io: *std.Io,
     alloc: std.mem.Allocator,
     state: State,
     stdout: *std.Io.Writer,
     tiler: Tiler,
 
-    pub fn init(stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
+    pub fn init(io: *std.Io, stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
         return .{
+            .io = io,
             .alloc = alloc,
             .state = .normal,
             .stdout = stdout,
-            .tiler = Tiler.init(),
+            .tiler = Tiler.init(alloc),
         };
     }
 };
 
 pub fn runApp(app: *App) !void {
 
+    const file = try std.Io.Dir.cwd().openFile(app.io.*, "build.zig", .{});
+    defer file.close(app.io.*);
+
+    const stat = try file.stat(app.io.*);
+    const contents = try app.alloc.alloc(u8, stat.size);
+    defer app.alloc.free(contents);
+
+    var read_buffer: [4096]u8 = undefined;
+    var reader = file.reader(app.io.*, &read_buffer);
+
+    try reader.interface.readSliceAll(contents);
+
+    // Real start
     try term.clear(app.stdout);
     var term_sz = term.getSize();
     var prev_term_sz = term_sz;
@@ -44,14 +62,12 @@ pub fn runApp(app: *App) !void {
 
     while (true) {
 
-        if (!try processKeybinds(app)) break;
+        if (!try processKeybinds(app, contents)) break;
 
         curr_tile = tiler_ops.getTile(&app.tiler);
 
-        if (app.state == .resize) {
+        if (app.state == .resize)
             try term.clear(app.stdout);
-            try term.setRed(app.stdout);
-        }
 
         term_sz = term.getSize();
         if (term_sz.cols != prev_term_sz.cols or term_sz.rows != prev_term_sz.rows) {
@@ -60,15 +76,15 @@ pub fn runApp(app: *App) !void {
             const cursor = &tile.cursor;
             try term.moveCursorTo(
                 app.stdout,
-                term.fixedFromPercY(tile.pos.y1) + cursor.y,
-                term.fixedFromPercX(tile.pos.x1) + cursor.x
+                term.fixedFromPercY(tile.rect.y1) + cursor.y,
+                term.fixedFromPercX(tile.rect.x1) + cursor.x
             );
         }
 
         try term.moveCursorTo(
             app.stdout,
-            term.fixedFromPercY(curr_tile.pos.y1) + curr_tile.cursor.y,
-            term.fixedFromPercX(curr_tile.pos.x1) + curr_tile.cursor.x
+            term.fixedFromPercY(curr_tile.rect.y1) + curr_tile.cursor.y,
+            term.fixedFromPercX(curr_tile.rect.x1) + curr_tile.cursor.x
         );
 
         prev_term_sz = term_sz;
@@ -86,7 +102,8 @@ pub fn runApp(app: *App) !void {
 fn drawTiles(app: *App) !void {
     try term.saveCursorPos(app.stdout);
     for (0..app.tiler.tiles_len) |i| {
-        try term.drawRectangle(app.stdout, &app.tiler.tiles[i].pos, i);
+        try term.drawRectangle(app.stdout, &app.tiler.tiles[i], &app.state);
+        try term.drawTile(app.stdout, &app.tiler.tiles[i]);
     }
     try term.loadCursorPos(app.stdout);
 }
@@ -94,13 +111,13 @@ fn drawTiles(app: *App) !void {
 fn updateCursor(app: *App) !void {
     const tile = tiler_ops.getTile(&app.tiler);
     const cursor: *Cursor = &tile.cursor;
-    const new_cur_x = term.fixedFromPercY(tile.pos.y1) + cursor.y;
-    const new_cur_y = term.fixedFromPercX(tile.pos.x1) + cursor.x;
+    const new_cur_x = term.fixedFromPercY(tile.rect.y1) + cursor.y;
+    const new_cur_y = term.fixedFromPercX(tile.rect.x1) + cursor.x;
     try term.moveCursorTo(app.stdout, new_cur_x, new_cur_y);
 }
 
 
-fn processKeybinds(app: *App) !bool {
+fn processKeybinds(app: *App, contents: []u8) !bool {
     var tlr = &app.tiler;
     var key: u8 = '.';
     const curr_tile = tiler_ops.getTile(tlr);
@@ -217,10 +234,10 @@ fn processKeybinds(app: *App) !bool {
     't' => {
         key = try term.getch();
         switch (key) {
-        'h' => tiler_ops.newTile(tlr, Direction.left) catch {},
-        'j' => tiler_ops.newTile(tlr, Direction.down) catch {},
-        'k' => tiler_ops.newTile(tlr, Direction.up) catch {},
-        'l' => tiler_ops.newTile(tlr, Direction.right) catch {},
+        'h' => tiler_ops.newTile(tlr, Direction.left, contents) catch {},
+        'j' => tiler_ops.newTile(tlr, Direction.down, contents) catch {},
+        'k' => tiler_ops.newTile(tlr, Direction.up, contents) catch {},
+        'l' => tiler_ops.newTile(tlr, Direction.right, contents) catch {},
         's' => {
             key = try term.getch();
             switch (key) {

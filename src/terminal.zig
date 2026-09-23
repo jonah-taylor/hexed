@@ -1,22 +1,89 @@
 const std = @import("std");
-const Rectangle = @import("./geometry.zig").Rectangle;
 
-pub fn drawRectangle(stdout: *std.Io.Writer, rect: *Rectangle, idx: usize) !void {
-    const prop_x1 = fixedFromPercX(rect.x1);
-    const prop_y1 = fixedFromPercY(rect.y1);
-    const prop_x2 = fixedFromPercX(rect.x2);
-    const prop_y2 = fixedFromPercY(rect.y2);
+const App = @import("app.zig").App;
+const Tile = @import("tiles/tile.zig").Tile;
 
-    try placeCharAt(stdout, prop_y1 + 2, prop_x1 + 2, '0' + @as(u8, @truncate(idx)));
+pub fn drawTile(stdout: *std.Io.Writer, tile: *Tile) !void {
 
-    for (0..prop_x2 - prop_x1) |x| {
-        try placeCharAt(stdout, prop_y1, prop_x1 + @as(u16, @intCast(x)), '+');
-        try placeCharAt(stdout, prop_y2, prop_x1 + @as(u16, @intCast(x)), '+');
+    const lines: [][]u8 = tile.lines.items;
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
     }
-    for (0..prop_y2 - prop_y1) |y| {
-        try placeCharAt(stdout, prop_y1 + @as(u16, @intCast(y)), prop_x1, '+');
-        try placeCharAt(stdout, prop_y1 + @as(u16, @intCast(y)), prop_x2, '+');
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = fixedFromPercX(tile.rect.x1) + 1;
+    const fixed_y1 = fixedFromPercY(tile.rect.y1) + 1;
+    const fixed_x2 = fixedFromPercX(tile.rect.x2) - 1;
+    const fixed_y2 = fixedFromPercY(tile.rect.y2);
+
+    var x: u16 = 0;
+    var y: u16 = 0;
+
+    outer: for (0..lines.len) |ln_i| {
+        if (fixed_y1 + y == fixed_y2) break;
+
+        num = @as(u16, @intCast(ln_i)) + 1;
+
+        // draw line number
+        x = num_padding;
+        while (num > 0) : (num /= 10) {
+            x -= 1;
+            const ch: u8 = '0' + @as(u8, @intCast(num % 10));
+            try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+        }
+
+        // draw line contents
+        x = num_padding + 1;
+
+        for (lines[ln_i]) |ch| {
+            if (fixed_x1 + x == fixed_x2) {
+                y += 1;
+                if (fixed_y1 + y == fixed_y2) break :outer;
+                x = num_padding + 1;
+            }
+
+            switch (ch) {
+            ' ' => {
+                try setGray(stdout);
+                try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
+                try colorReset(stdout);
+            },
+            else => try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch}),
+            }
+            x += 1;
+        }
+        y += 1;
     }
+    for (0..(fixed_y2 - (fixed_y1 + y))) |i| {
+        // draw ~
+        x = num_padding + 1;
+        const ch: u8 = '~';
+        try placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
+    }
+}
+
+pub fn drawRectangle(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
+    const fixed_x1 = fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = fixedFromPercX(tile.rect.x2);
+    const fixed_y2 = fixedFromPercY(tile.rect.y2);
+
+    if (state.* == .resize)
+        try setRed(stdout);
+
+    for (0..fixed_x2 - fixed_x1) |x| {
+        try placeStrAt(stdout, fixed_y1, fixed_x1 + @as(u16, @intCast(x)), "+");
+        try placeStrAt(stdout, fixed_y2, fixed_x1 + @as(u16, @intCast(x)), "+");
+    }
+    for (0..fixed_y2 - fixed_y1) |y| {
+        try placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(y)), fixed_x1, "+");
+        try placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(y)), fixed_x2, "+");
+    }
+
+    try colorReset(stdout);
 }
 
 pub fn clear(stdout: *std.Io.Writer) !void {
@@ -31,12 +98,16 @@ pub fn setRed(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[31m", .{});
 }
 
+pub fn setGray(stdout: *std.Io.Writer) !void {
+    try stdout.print("\x1b[90m", .{});
+}
+
 pub fn colorReset(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[0m", .{});
 }
 
-pub fn placeCharAt(stdout: *std.Io.Writer, row: u16, col: u16, char: u8) !void {
-    try stdout.print("\x1b[{d};{d}H{c}", .{ row + 1, col + 1, char });
+pub fn placeStrAt(stdout: *std.Io.Writer, row: u16, col: u16, str: []const u8) !void {
+    try stdout.print("\x1b[{d};{d}H{s}", .{ row + 1, col + 1, str });
 }
 
 pub fn saveCursorPos(stdout: *std.Io.Writer) !void {

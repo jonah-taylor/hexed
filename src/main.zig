@@ -16,7 +16,8 @@ pub fn main(init: std.process.Init) !void {
     term.setTermios(raw_termios);
     defer term.setTermios(init_termios);
 
-    var app = App.init(stdout, alloc);
+    var io = init.io;
+    var app = App.init(&io, stdout, alloc);
 
     try app_ops.runApp(&app);
 }

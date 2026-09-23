@@ -16,11 +16,11 @@ fn roundToNearest8(x: u16) u16 {
 }
 
 fn LTX(tiles: [256]Tile, w1_idx: usize, w2_idx: usize) bool {
-    return tiles[w1_idx].pos.x1 < tiles[w2_idx].pos.x1;
+    return tiles[w1_idx].rect.x1 < tiles[w2_idx].rect.x1;
 }
 
 fn GTY(tiles: [256]Tile, w1_idx: usize, w2_idx: usize) bool {
-    return tiles[w1_idx].pos.y1 > tiles[w2_idx].pos.y1;
+    return tiles[w1_idx].rect.y1 > tiles[w2_idx].rect.y1;
 }
 
 pub const Tiler = struct {
@@ -35,14 +35,16 @@ pub const Tiler = struct {
     tiles: [maxTiles]Tile,
     tiles_len: usize,
     tile_idx: usize,
+    alloc: std.mem.Allocator,
 
-    pub fn init() Self {
+    pub fn init(alloc: std.mem.Allocator) Self {
         var tiler = Self {
             .tiles = undefined,
             .tiles_len = 1,
             .tile_idx = 0,
+            .alloc = alloc,
         };
-        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 });
+        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 }, tiler.alloc, &.{});
 
         return tiler;
     }
@@ -61,7 +63,7 @@ pub fn tileIdxFromPoint(tiler: *Tiler, x1: u16, y1: u16) ?usize {
     return null;
 }
 
-pub fn newTile(tiler: *Tiler, dir: Direction) !void {
+pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8) !void {
     if (tiler.tiles_len >= tiler.tiles.len)
         return;
 
@@ -72,10 +74,10 @@ pub fn newTile(tiler: *Tiler, dir: Direction) !void {
 
     const tile = getTile(tiler);
 
-    x1 = tile.pos.x1;
-    y1 = tile.pos.y1;
-    x2 = tile.pos.x2;
-    y2 = tile.pos.y2;
+    x1 = tile.rect.x1;
+    y1 = tile.rect.y1;
+    x2 = tile.rect.x2;
+    y2 = tile.rect.y2;
 
     switch (dir) {
     .up, .down => {
@@ -92,26 +94,26 @@ pub fn newTile(tiler: *Tiler, dir: Direction) !void {
     .up => {
         y2 = y1 + (y2 - y1) / 2;
         y2 = roundToNearest8(y2);
-        tile.pos.y1 = y2;
+        tile.rect.y1 = y2;
     },
     .down => {
         y1 = y1 + (y2 - y1) / 2;
         y1 = roundToNearest8(y1);
-        tile.pos.y2 = y1;
+        tile.rect.y2 = y1;
     },
     .left => {
         x2 = x1 + (x2 - x1) / 2;
         x2 = roundToNearest8(x2);
-        tile.pos.x1 = x2;
+        tile.rect.x1 = x2;
     },
     .right => {
         x1 = x1 + (x2 - x1) / 2;
         x1 = roundToNearest8(x1);
-        tile.pos.x2 = x1;
+        tile.rect.x2 = x1;
     },
     }
 
-    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 });
+    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 }, tiler.alloc, buf);
     tiler.tiles_len += 1;
     tiler.tile_idx = tiler.tiles_len - 1;
 
@@ -138,10 +140,10 @@ pub fn rmTile(tiler: *Tiler) !usize {
     for (0..consumers) |i| {
         var cons = &tiler.tiles[buf[i]];
         switch (dir) {
-        .up => cons.pos.y2 = food.pos.y2,
-        .down => cons.pos.y1 = food.pos.y1,
-        .left => cons.pos.x2 = food.pos.x2,
-        .right => cons.pos.x1 = food.pos.x1,
+        .up => cons.rect.y2 = food.rect.y2,
+        .down => cons.rect.y1 = food.rect.y1,
+        .left => cons.rect.x2 = food.rect.x2,
+        .right => cons.rect.x1 = food.rect.x1,
         }
     }
 
@@ -168,16 +170,16 @@ fn distributeTilesAcross(tiler: *Tiler, axis: Axis, idxs: []usize, ax1: u16, ay1
         var tile = &tiler.tiles[idxs[idx]];
         switch (axis) {
         .x => {
-            tile.pos.y1 = ay1;
-            tile.pos.y2 = ay2;
-            tile.pos.x1 = roundToNearest8(iter);
-            tile.pos.x2 = roundToNearest8(iter + step);
+            tile.rect.y1 = ay1;
+            tile.rect.y2 = ay2;
+            tile.rect.x1 = roundToNearest8(iter);
+            tile.rect.x2 = roundToNearest8(iter + step);
         },
         .y => {
-            tile.pos.x1 = ax1;
-            tile.pos.x2 = ax2;
-            tile.pos.y1 = roundToNearest8(iter);
-            tile.pos.y2 = roundToNearest8(iter + step);
+            tile.rect.x1 = ax1;
+            tile.rect.x2 = ax2;
+            tile.rect.y1 = roundToNearest8(iter);
+            tile.rect.y2 = roundToNearest8(iter + step);
         },
         }
 
@@ -200,18 +202,18 @@ pub fn rotateInDir(tiler: *Tiler, dir: Direction, clockwise: bool) !bool {
 
     for (0..idxs_len.my_idxs_len) |idx| {
         const tile = &tiler.tiles[my_idxs[idx]];
-        if (tile.pos.y1 < area_y1) area_y1 = tile.pos.y1;
-        if (tile.pos.y2 > area_y2) area_y2 = tile.pos.y2;
-        if (tile.pos.x1 < area_x1) area_x1 = tile.pos.x1;
-        if (tile.pos.x2 > area_x2) area_x2 = tile.pos.x2;
+        if (tile.rect.y1 < area_y1) area_y1 = tile.rect.y1;
+        if (tile.rect.y2 > area_y2) area_y2 = tile.rect.y2;
+        if (tile.rect.x1 < area_x1) area_x1 = tile.rect.x1;
+        if (tile.rect.x2 > area_x2) area_x2 = tile.rect.x2;
     }
 
     for (0..idxs_len.your_idxs_len) |idx| {
         const tile = &tiler.tiles[your_idxs[idx]];
-        if (tile.pos.y1 < area_y1) area_y1 = tile.pos.y1;
-        if (tile.pos.y2 > area_y2) area_y2 = tile.pos.y2;
-        if (tile.pos.x1 < area_x1) area_x1 = tile.pos.x1;
-        if (tile.pos.x2 > area_x2) area_x2 = tile.pos.x2;
+        if (tile.rect.y1 < area_y1) area_y1 = tile.rect.y1;
+        if (tile.rect.y2 > area_y2) area_y2 = tile.rect.y2;
+        if (tile.rect.x1 < area_x1) area_x1 = tile.rect.x1;
+        if (tile.rect.x2 > area_x2) area_x2 = tile.rect.x2;
     }
 
     const mid_x: u16 = roundToNearest8(area_x1 + (area_x2 - area_x1) / 2);
@@ -230,13 +232,13 @@ pub fn rotateInDir(tiler: *Tiler, dir: Direction, clockwise: bool) !bool {
         for (1..idxs_len.my_idxs_len) |idx| {
             const curr = &tiler.tiles[my_idxs[idx]];
             const prev = &tiler.tiles[my_idxs[idx - 1]];
-            if (curr.pos.y1 != prev.pos.y1 or curr.pos.y2 != prev.pos.y2)
+            if (curr.rect.y1 != prev.rect.y1 or curr.rect.y2 != prev.rect.y2)
                 return false;
         }
         for (1..idxs_len.your_idxs_len) |idx| {
             const curr = &tiler.tiles[your_idxs[idx]];
             const prev = &tiler.tiles[your_idxs[idx - 1]];
-            if (curr.pos.y1 != prev.pos.y1 or curr.pos.y2 != prev.pos.y2)
+            if (curr.rect.y1 != prev.rect.y1 or curr.rect.y2 != prev.rect.y2)
                 return false;
         }
 
@@ -256,13 +258,13 @@ pub fn rotateInDir(tiler: *Tiler, dir: Direction, clockwise: bool) !bool {
         for (1..idxs_len.my_idxs_len) |idx| {
             const curr = &tiler.tiles[my_idxs[idx]];
             const prev = &tiler.tiles[my_idxs[idx - 1]];
-            if (curr.pos.x1 != prev.pos.x1 or curr.pos.x2 != prev.pos.x2)
+            if (curr.rect.x1 != prev.rect.x1 or curr.rect.x2 != prev.rect.x2)
                 return false;
         }
         for (1..idxs_len.your_idxs_len) |idx| {
             const curr = &tiler.tiles[your_idxs[idx]];
             const prev = &tiler.tiles[your_idxs[idx - 1]];
-            if (curr.pos.x1 != prev.pos.x1 or curr.pos.x2 != prev.pos.x2)
+            if (curr.rect.x1 != prev.rect.x1 or curr.rect.x2 != prev.rect.x2)
                 return false;
         }
 
@@ -343,16 +345,16 @@ pub fn resizeTile(tiler: *Tiler, dirp: Direction, op_idx: ?usize, growing: bool)
             for (0..adj.your_idxs_len) |i| {
                 const tile = &tiler.tiles[your_idxs[i]];
                 switch (dir) {
-                .up, .down => if (tile.pos.y2 - tile.pos.y1 <= minRows) return,
-                .left, .right => if (tile.pos.x2 - tile.pos.x1 <= minCols) return,
+                .up, .down => if (tile.rect.y2 - tile.rect.y1 <= minRows) return,
+                .left, .right => if (tile.rect.x2 - tile.rect.x1 <= minCols) return,
                 }
             }
         } else {
             for (0..adj.my_idxs_len) |i| {
                 const tile = &tiler.tiles[my_idxs[i]];
                 switch (dir) {
-                .up, .down => if (tile.pos.y2 - tile.pos.y1 <= minRows) return,
-                .left, .right => if (tile.pos.x2 - tile.pos.x1 <= minCols) return,
+                .up, .down => if (tile.rect.y2 - tile.rect.y1 <= minRows) return,
+                .left, .right => if (tile.rect.x2 - tile.rect.x1 <= minCols) return,
                 }
             }
         }
@@ -362,30 +364,30 @@ pub fn resizeTile(tiler: *Tiler, dirp: Direction, op_idx: ?usize, growing: bool)
             switch (dir) {
             .up => {
                 if (is_growing) {
-                    tile.pos.y1 -= strength_y;
+                    tile.rect.y1 -= strength_y;
                 } else {
-                    tile.pos.y1 += strength_y;
+                    tile.rect.y1 += strength_y;
                 }
             },
             .down => {
                 if (is_growing) {
-                    tile.pos.y2 += strength_y;
+                    tile.rect.y2 += strength_y;
                 } else {
-                    tile.pos.y2 -= strength_y;
+                    tile.rect.y2 -= strength_y;
                 }
             },
             .left => {
                 if (is_growing) {
-                    tile.pos.x1 -= strength_x;
+                    tile.rect.x1 -= strength_x;
                 } else {
-                    tile.pos.x1 += strength_x;
+                    tile.rect.x1 += strength_x;
                 }
             },
             .right => {
                 if (is_growing) {
-                    tile.pos.x2 += strength_x;
+                    tile.rect.x2 += strength_x;
                 } else {
-                    tile.pos.x2 -= strength_x;
+                    tile.rect.x2 -= strength_x;
                 }
             },
             }
@@ -396,30 +398,30 @@ pub fn resizeTile(tiler: *Tiler, dirp: Direction, op_idx: ?usize, growing: bool)
             switch (dir) {
             .up => {
                 if (is_growing) {
-                    tile.pos.y2 -= strength_y;
+                    tile.rect.y2 -= strength_y;
                 } else {
-                    tile.pos.y2 += strength_y;
+                    tile.rect.y2 += strength_y;
                 }
             },
             .down => {
                 if (is_growing) {
-                    tile.pos.y1 += strength_y;
+                    tile.rect.y1 += strength_y;
                 } else {
-                    tile.pos.y1 -= strength_y;
+                    tile.rect.y1 -= strength_y;
                 }
             },
             .left => {
                 if (is_growing) {
-                    tile.pos.x2 -= strength_x;
+                    tile.rect.x2 -= strength_x;
                 } else {
-                    tile.pos.x2 += strength_x;
+                    tile.rect.x2 += strength_x;
                 }
             },
             .right => {
                 if (is_growing) {
-                    tile.pos.x1 += strength_x;
+                    tile.rect.x1 += strength_x;
                 } else {
-                    tile.pos.x1 -= strength_x;
+                    tile.rect.x1 -= strength_x;
                 }
             },
             }
@@ -435,15 +437,15 @@ pub fn swapTileInDir(tiler: *Tiler, dir: Direction) !void {
     const prop_cur_y = term.percFromFixedY(cursor.y);
 
     const other_tile_idx: usize = tileIdxFromDirPoint(tiler, dir,
-        curr_tile.pos.x1 + 1 + prop_cur_x,
-        curr_tile.pos.y1 + 1 + prop_cur_y
+        curr_tile.rect.x1 + 1 + prop_cur_x,
+        curr_tile.rect.y1 + 1 + prop_cur_y
     ) orelse return;
 
     const other_tile: *Tile = &tiler.tiles[other_tile_idx];
-    std.mem.swap(u16, &curr_tile.pos.x1, &other_tile.pos.x1);
-    std.mem.swap(u16, &curr_tile.pos.y1, &other_tile.pos.y1);
-    std.mem.swap(u16, &curr_tile.pos.x2, &other_tile.pos.x2);
-    std.mem.swap(u16, &curr_tile.pos.y2, &other_tile.pos.y2);
+    std.mem.swap(u16, &curr_tile.rect.x1, &other_tile.rect.x1);
+    std.mem.swap(u16, &curr_tile.rect.y1, &other_tile.rect.y1);
+    std.mem.swap(u16, &curr_tile.rect.x2, &other_tile.rect.x2);
+    std.mem.swap(u16, &curr_tile.rect.y2, &other_tile.rect.y2);
 
     tiler.tile_idx = other_tile_idx;
 }
@@ -456,8 +458,8 @@ pub fn tileIdxFromCursorDir(tiler: *Tiler, dir: Direction) ?usize {
     const prop_cur_y = term.percFromFixedY(cursor.y);
 
     const idx: usize = tileIdxFromDirPoint(tiler, dir,
-        tile.pos.x1 + 1 + prop_cur_x,
-        tile.pos.y1 + 1 + prop_cur_y
+        tile.rect.x1 + 1 + prop_cur_x,
+        tile.rect.y1 + 1 + prop_cur_y
     ) orelse return null;
 
     return idx;
@@ -468,10 +470,10 @@ fn tileIdxFromDirPoint(tiler: *Tiler, dir: Direction, x: u16, y: u16) ?usize {
 
     const tile: *Tile = &tiler.tiles[coord_idx];
     return switch (dir) {
-    .up => return tileIdxFromPoint(tiler, x, tile.pos.y1 -% 1),
-    .down => tileIdxFromPoint(tiler, x, tile.pos.y2 + 1),
-    .left => tileIdxFromPoint(tiler, tile.pos.x1 -% 1, y),
-    .right => tileIdxFromPoint(tiler, tile.pos.x2 + 1, y),
+    .up => return tileIdxFromPoint(tiler, x, tile.rect.y1 -% 1),
+    .down => tileIdxFromPoint(tiler, x, tile.rect.y2 + 1),
+    .left => tileIdxFromPoint(tiler, tile.rect.x1 -% 1, y),
+    .right => tileIdxFromPoint(tiler, tile.rect.x2 + 1, y),
     };
 }
 
@@ -502,8 +504,8 @@ fn walk(tiler: *Tiler,
 
         next_idx = tileIdxFromDirPoint(tiler,
             dir,
-            if (dir == .up or dir == .down) border else shorter.pos.x1 + 1,
-            if (dir == .left or dir == .right) border else shorter.pos.y1 + 1
+            if (dir == .up or dir == .down) border else shorter.rect.x1 + 1,
+            if (dir == .left or dir == .right) border else shorter.rect.y1 + 1
         ) orelse return;
 
         if (shorter == &tiler.tiles[cur_my_idx]) {
@@ -530,8 +532,8 @@ fn getAlignedIdxs(tiler: *Tiler,
 
     const your_tile_idx: usize = tileIdxFromDirPoint(tiler, 
         dir,
-        my_tile.pos.x1 + 1,
-        my_tile.pos.y1 + 1
+        my_tile.rect.x1 + 1,
+        my_tile.rect.y1 + 1
     ) orelse return null;
 
     const your_tile: *Tile = &tiler.tiles[your_tile_idx];
@@ -546,28 +548,28 @@ fn getAlignedIdxs(tiler: *Tiler,
 
     const bounds = struct {
         fn equalUp(w1: *Tile, w2: *Tile) bool {
-            return w1.pos.y1 == w2.pos.y1;
+            return w1.rect.y1 == w2.rect.y1;
         }
         fn shorterUp(w1: *Tile, w2: *Tile) *Tile {
-            return if (w1.pos.y1 > w2.pos.y1) w1 else w2;
+            return if (w1.rect.y1 > w2.rect.y1) w1 else w2;
         }
         fn equalDown(w1: *Tile, w2: *Tile) bool {
-            return w1.pos.y2 == w2.pos.y2;
+            return w1.rect.y2 == w2.rect.y2;
         }
         fn shorterDown(w1: *Tile, w2: *Tile) *Tile {
-            return if (w1.pos.y2 < w2.pos.y2) w1 else w2;
+            return if (w1.rect.y2 < w2.rect.y2) w1 else w2;
         }
         fn equalLeft(w1: *Tile, w2: *Tile) bool {
-            return w1.pos.x1 == w2.pos.x1;
+            return w1.rect.x1 == w2.rect.x1;
         }
         fn shorterLeft(w1: *Tile, w2: *Tile) *Tile {
-            return if (w1.pos.x1 > w2.pos.x1) w1 else w2;
+            return if (w1.rect.x1 > w2.rect.x1) w1 else w2;
         }
         fn equalRight(w1: *Tile, w2: *Tile) bool {
-            return w1.pos.x2 == w2.pos.x2;
+            return w1.rect.x2 == w2.rect.x2;
         }
         fn shorterRight(w1: *Tile, w2: *Tile) *Tile {
-            return if (w1.pos.x2 < w2.pos.x2) w1 else w2;
+            return if (w1.rect.x2 < w2.rect.x2) w1 else w2;
         }
     };
 
@@ -576,8 +578,8 @@ fn getAlignedIdxs(tiler: *Tiler,
         for ([_]Direction{ .up, .down }) |d| {
             walk(tiler,
                 d,
-                if (dir == .right) my_tile.pos.x2 - 1 else my_tile.pos.x1 + 1,
-                if (dir == .right) your_tile.pos.x1 + 1 else your_tile.pos.x2 - 1,
+                if (dir == .right) my_tile.rect.x2 - 1 else my_tile.rect.x1 + 1,
+                if (dir == .right) your_tile.rect.x1 + 1 else your_tile.rect.x2 - 1,
                 my_tile_idx,
                 your_tile_idx,
                 &my_idxs_len,
@@ -593,8 +595,8 @@ fn getAlignedIdxs(tiler: *Tiler,
         for ([_]Direction{ .left, .right }) |d| {
             walk(tiler,
                 d,
-                if (dir == .down) my_tile.pos.y2 - 1 else my_tile.pos.y1 + 1,
-                if (dir == .down) your_tile.pos.y1 + 1 else your_tile.pos.y2 - 1,
+                if (dir == .down) my_tile.rect.y2 - 1 else my_tile.rect.y1 + 1,
+                if (dir == .down) your_tile.rect.y1 + 1 else your_tile.rect.y2 - 1,
                 my_tile_idx,
                 your_tile_idx,
                 &my_idxs_len,
@@ -619,7 +621,7 @@ pub fn tileIdxsFromDirTile(tiler: *Tiler,
     const tile: *Tile = &tiler.tiles[base_idx];
     var out_len: usize = 0;
 
-    var side_idx: usize = tileIdxFromDirPoint(tiler, dir, tile.pos.x1 + 1, tile.pos.y1 + 1) orelse return null;
+    var side_idx: usize = tileIdxFromDirPoint(tiler, dir, tile.rect.x1 + 1, tile.rect.y1 + 1) orelse return null;
 
     out[out_len] = side_idx;
     var side_tile: *Tile = &tiler.tiles[out[out_len]];
@@ -627,50 +629,50 @@ pub fn tileIdxsFromDirTile(tiler: *Tiler,
 
     sideiter: switch (dir) {
     .up, .down => {
-        if (side_tile.pos.x1 != tile.pos.x1 or side_tile.pos.x2 > tile.pos.x2)
+        if (side_tile.rect.x1 != tile.rect.x1 or side_tile.rect.x2 > tile.rect.x2)
             return null;
-        if (side_tile.pos.x2 == tile.pos.x2)
+        if (side_tile.rect.x2 == tile.rect.x2)
             break :sideiter;
 
         while (true) {
             const bounds: u16 = if (dir == .up)
-                side_tile.pos.y2 - 1
+                side_tile.rect.y2 - 1
             else
-                side_tile.pos.y1 + 1;
+                side_tile.rect.y1 + 1;
 
-            side_idx = tileIdxFromDirPoint(tiler, .right, side_tile.pos.x1 + 1, bounds) orelse break;
+            side_idx = tileIdxFromDirPoint(tiler, .right, side_tile.rect.x1 + 1, bounds) orelse break;
 
             out[out_len] = side_idx;
             side_tile = &tiler.tiles[side_idx];
             out_len += 1;
 
-            if (side_tile.pos.x2 == tile.pos.x2)
+            if (side_tile.rect.x2 == tile.rect.x2)
                 break;
-            if (side_tile.pos.x2 > tile.pos.x2)
+            if (side_tile.rect.x2 > tile.rect.x2)
                 return null;
         }
     },
     .left, .right => {
-        if (side_tile.pos.y1 != tile.pos.y1 or side_tile.pos.y2 > tile.pos.y2)
+        if (side_tile.rect.y1 != tile.rect.y1 or side_tile.rect.y2 > tile.rect.y2)
             return null;
-        if (side_tile.pos.y2 == tile.pos.y2)
+        if (side_tile.rect.y2 == tile.rect.y2)
             break :sideiter;
 
         while (true) {
             const bounds: u16 = if (dir == .left)
-                side_tile.pos.x2 - 1
+                side_tile.rect.x2 - 1
             else
-                side_tile.pos.x1 + 1;
+                side_tile.rect.x1 + 1;
 
-            side_idx = tileIdxFromDirPoint(tiler, .down, bounds, side_tile.pos.y1 + 1) orelse break;
+            side_idx = tileIdxFromDirPoint(tiler, .down, bounds, side_tile.rect.y1 + 1) orelse break;
 
             out[out_len] = side_idx;
             side_tile = &tiler.tiles[side_idx];
             out_len += 1;
 
-            if (side_tile.pos.y2 == tile.pos.y2)
+            if (side_tile.rect.y2 == tile.rect.y2)
                 break;
-            if (side_tile.pos.y2 > tile.pos.y2)
+            if (side_tile.rect.y2 > tile.rect.y2)
                 return null;
         }
     },
