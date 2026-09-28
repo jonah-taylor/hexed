@@ -44,7 +44,7 @@ pub const Tiler = struct {
             .tile_idx = 0,
             .alloc = alloc,
         };
-        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 }, tiler.alloc, &.{});
+        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 }, tiler.alloc, &.{}, "empty");
 
         return tiler;
     }
@@ -63,7 +63,7 @@ pub fn tileIdxFromPoint(tiler: *Tiler, x1: u16, y1: u16) ?usize {
     return null;
 }
 
-pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8) !void {
+pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8, name: []const u8) !void {
     if (tiler.tiles_len >= tiler.tiles.len)
         return;
 
@@ -113,7 +113,7 @@ pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8) !void {
     },
     }
 
-    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 }, tiler.alloc, buf);
+    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 }, tiler.alloc, buf, name);
     tiler.tiles_len += 1;
     tiler.tile_idx = tiler.tiles_len - 1;
 

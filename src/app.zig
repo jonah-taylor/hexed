@@ -11,7 +11,6 @@ const Tile = tile_ops.Tile;
 const tiler_ops = @import("./tiler.zig");
 const Tiler = tiler_ops.Tiler;
 
-
 pub const App = struct {
     const Self = @This();
 
@@ -69,6 +68,7 @@ pub fn runApp(app: *App) !void {
         if (app.state == .resize)
             try term.clear(app.stdout);
 
+        // window resizing
         term_sz = term.getSize();
         if (term_sz.cols != prev_term_sz.cols or term_sz.rows != prev_term_sz.rows) {
             try term.clear(app.stdout);
@@ -100,10 +100,11 @@ pub fn runApp(app: *App) !void {
 }
 
 fn drawTiles(app: *App) !void {
+    try term.clear(app.stdout);
     try term.saveCursorPos(app.stdout);
     for (0..app.tiler.tiles_len) |i| {
-        try term.drawRectangle(app.stdout, &app.tiler.tiles[i], &app.state);
-        try term.drawTile(app.stdout, &app.tiler.tiles[i]);
+        // try term.drawRectangle(app.stdout, &app.tiler.tiles[i], &app.state);
+        try term.drawTile(app.stdout, &app.tiler.tiles[i], &app.state);
     }
     try term.loadCursorPos(app.stdout);
 }
@@ -116,10 +117,10 @@ fn updateCursor(app: *App) !void {
     try term.moveCursorTo(app.stdout, new_cur_x, new_cur_y);
 }
 
-
 fn processKeybinds(app: *App, contents: []u8) !bool {
     var tlr = &app.tiler;
     var key: u8 = '.';
+    const name = "build.zig";
     const curr_tile = tiler_ops.getTile(tlr);
     key = try term.getch();
     switch (key) {
@@ -234,10 +235,10 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     't' => {
         key = try term.getch();
         switch (key) {
-        'h' => tiler_ops.newTile(tlr, Direction.left, contents) catch {},
-        'j' => tiler_ops.newTile(tlr, Direction.down, contents) catch {},
-        'k' => tiler_ops.newTile(tlr, Direction.up, contents) catch {},
-        'l' => tiler_ops.newTile(tlr, Direction.right, contents) catch {},
+        'h' => tiler_ops.newTile(tlr, Direction.left, contents, name[0..]) catch {},
+        'j' => tiler_ops.newTile(tlr, Direction.down, contents, name[0..]) catch {},
+        'k' => tiler_ops.newTile(tlr, Direction.up, contents, name[0..]) catch {},
+        'l' => tiler_ops.newTile(tlr, Direction.right, contents, name[0..]) catch {},
         's' => {
             key = try term.getch();
             switch (key) {

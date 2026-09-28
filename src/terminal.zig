@@ -1,68 +1,11 @@
 const std = @import("std");
 
 const App = @import("app.zig").App;
-const Tile = @import("tiles/tile.zig").Tile;
+const tile_ops = @import("tiles/tile.zig");
+const Tile = tile_ops.Tile;
 
-pub fn drawTile(stdout: *std.Io.Writer, tile: *Tile) !void {
-
-    const lines: [][]u8 = tile.lines.items;
-
-    var digits: u16 = 0;
-    var num = lines.len;
-    while (num > 0) : (num /= 10) {
-        digits += 1;
-    }
-    const num_padding: u16 = digits;
-
-    const fixed_x1 = fixedFromPercX(tile.rect.x1) + 1;
-    const fixed_y1 = fixedFromPercY(tile.rect.y1) + 1;
-    const fixed_x2 = fixedFromPercX(tile.rect.x2) - 1;
-    const fixed_y2 = fixedFromPercY(tile.rect.y2);
-
-    var x: u16 = 0;
-    var y: u16 = 0;
-
-    outer: for (0..lines.len) |ln_i| {
-        if (fixed_y1 + y == fixed_y2) break;
-
-        num = @as(u16, @intCast(ln_i)) + 1;
-
-        // draw line number
-        x = num_padding;
-        while (num > 0) : (num /= 10) {
-            x -= 1;
-            const ch: u8 = '0' + @as(u8, @intCast(num % 10));
-            try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-        }
-
-        // draw line contents
-        x = num_padding + 1;
-
-        for (lines[ln_i]) |ch| {
-            if (fixed_x1 + x == fixed_x2) {
-                y += 1;
-                if (fixed_y1 + y == fixed_y2) break :outer;
-                x = num_padding + 1;
-            }
-
-            switch (ch) {
-            ' ' => {
-                try setGray(stdout);
-                try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
-                try colorReset(stdout);
-            },
-            else => try placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch}),
-            }
-            x += 1;
-        }
-        y += 1;
-    }
-    for (0..(fixed_y2 - (fixed_y1 + y))) |i| {
-        // draw ~
-        x = num_padding + 1;
-        const ch: u8 = '~';
-        try placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
-    }
+pub fn drawTile(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
+    try tile_ops.draw(tile, stdout, state);
 }
 
 pub fn drawRectangle(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
