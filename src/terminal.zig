@@ -5,7 +5,7 @@ const tile_ops = @import("tiles/tile.zig");
 const Tile = tile_ops.Tile;
 
 pub fn drawTile(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
-    try tile_ops.draw(tile, stdout, state);
+    try tile_ops.drawContents(tile, stdout, state);
 }
 
 pub fn drawRectangle(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {

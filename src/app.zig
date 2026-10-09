@@ -38,6 +38,8 @@ pub const App = struct {
 
 pub fn runApp(app: *App) !void {
 
+    // START OF STUB
+
     const file = try std.Io.Dir.cwd().openFile(app.io.*, "build.zig", .{});
     defer file.close(app.io.*);
 
@@ -50,7 +52,8 @@ pub fn runApp(app: *App) !void {
 
     try reader.interface.readSliceAll(contents);
 
-    // Real start
+    // END OF STUB
+
     try term.clear(app.stdout);
     var term_sz = term.getSize();
     var prev_term_sz = term_sz;
@@ -72,20 +75,7 @@ pub fn runApp(app: *App) !void {
         term_sz = term.getSize();
         if (term_sz.cols != prev_term_sz.cols or term_sz.rows != prev_term_sz.rows) {
             try term.clear(app.stdout);
-            const tile = &app.tiler.tiles[app.tiler.tile_idx];
-            const cursor = &tile.cursor;
-            try term.moveCursorTo(
-                app.stdout,
-                term.fixedFromPercY(tile.rect.y1) + cursor.y,
-                term.fixedFromPercX(tile.rect.x1) + cursor.x
-            );
         }
-
-        try term.moveCursorTo(
-            app.stdout,
-            term.fixedFromPercY(curr_tile.rect.y1) + curr_tile.cursor.y,
-            term.fixedFromPercX(curr_tile.rect.x1) + curr_tile.cursor.x
-        );
 
         prev_term_sz = term_sz;
 
@@ -94,7 +84,7 @@ pub fn runApp(app: *App) !void {
         if (app.state == .resize)
             try term.colorReset(app.stdout);
 
-        try updateCursor(app);
+        try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
         app.stdout.flush() catch {};
     }
 }
@@ -109,14 +99,6 @@ fn drawTiles(app: *App) !void {
     try term.loadCursorPos(app.stdout);
 }
 
-fn updateCursor(app: *App) !void {
-    const tile = tiler_ops.getTile(&app.tiler);
-    const cursor: *Cursor = &tile.cursor;
-    const new_cur_x = term.fixedFromPercY(tile.rect.y1) + cursor.y;
-    const new_cur_y = term.fixedFromPercX(tile.rect.x1) + cursor.x;
-    try term.moveCursorTo(app.stdout, new_cur_x, new_cur_y);
-}
-
 fn processKeybinds(app: *App, contents: []u8) !bool {
     var tlr = &app.tiler;
     var key: u8 = '.';
@@ -127,8 +109,8 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     'D' => {
         tlr.tile_idx = tiler_ops.rmTile(tlr) catch {
             try term.clear(app.stdout);
-            try term.moveCursorTo(app.stdout, 0, 0);
-            app.stdout.flush() catch {};
+            try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
+            try app.stdout.flush();
             return false;
         };
         try term.clear(app.stdout);
@@ -180,40 +162,40 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         }
     },
     'h' => {
-        switch (app.state) {
-        .normal => curr_tile.cursor.x -= 1,
-        .resize => try tiler_ops.resizeTile(tlr, Direction.left, tlr.tile_idx, true),
-        }
+        try switch (app.state) {
+        .normal => tile_ops.moveCursorLeft(curr_tile),
+        .resize => tiler_ops.resizeTile(tlr, Direction.left, tlr.tile_idx, true),
+        };
     },
     'H' => {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.left)
             orelse return true;
     },
     'j' => {
-        switch (app.state) {
-        .normal => curr_tile.cursor.y += 1,
-        .resize => try tiler_ops.resizeTile(tlr, Direction.down, tlr.tile_idx, true),
-        }
+        try switch (app.state) {
+        .normal => tile_ops.moveCursorDown(curr_tile),
+        .resize => tiler_ops.resizeTile(tlr, Direction.down, tlr.tile_idx, true),
+        };
     },
     'J' => {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.down)
             orelse return true;
     },
     'k' => {
-        switch (app.state) {
-        .normal => curr_tile.cursor.y -= 1,
-        .resize => try tiler_ops.resizeTile(tlr, Direction.up, tlr.tile_idx, true),
-        }
+        try switch (app.state) {
+        .normal => tile_ops.moveCursorUp(curr_tile),
+        .resize => tiler_ops.resizeTile(tlr, Direction.up, tlr.tile_idx, true),
+        };
     },
     'K' => {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.up)
             orelse return true;
     },
     'l' => {
-        switch (app.state) {
-        .normal => curr_tile.cursor.x += 1,
-        .resize => try tiler_ops.resizeTile(tlr, Direction.right, tlr.tile_idx, true),
-        }
+        try switch (app.state) {
+        .normal => tile_ops.moveCursorRight(curr_tile),
+        .resize => tiler_ops.resizeTile(tlr, Direction.right, tlr.tile_idx, true),
+        };
     },
     'L' => {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.right)

@@ -3,7 +3,7 @@ const App = @import("../app.zig").App;
 const Tile = @import("tile.zig").Tile;
 const term_ops = @import("../terminal.zig");
 
-pub fn draw(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
+pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
 
     const lines: [][]u8 = tile.lines.items;
 
@@ -70,4 +70,82 @@ pub fn draw(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
         try term_ops.placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
         try term_ops.colorReset(stdout);
     }
+}
+
+pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
+
+    const lines: [][]u8 = tile.lines.items;
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
+    }
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 1;
+    const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
+
+    var x: u16 = 0;
+    var y: u16 = 0;
+
+    outer: for (0..tile.cursor.ln) |ln_i| {
+        if (fixed_y1 + y == fixed_y2) break;
+
+        num = @as(u16, @intCast(ln_i)) + 1;
+
+        x = num_padding + 1;
+
+        // iterate over contents for internal newlines
+
+        for (0..lines[ln_i].len) |i| {
+            if (ln_i == tile.cursor.ln - 1 and i == tile.cursor.ch) break :outer;
+            if (fixed_x1 + x == fixed_x2) {
+                y += 1;
+                if (fixed_y1 + y == fixed_y2) break :outer;
+                x = num_padding + 1;
+            }
+
+            x += 1;
+        }
+        y += 1;
+    }
+
+    try term_ops.moveCursorTo(stdout, fixed_x1 + x, fixed_y1 + y);
+}
+
+pub fn moveCursorUp(tile: *Tile) !void {
+    tile.cursor.ln -= 1;
+
+    const lines: [][]u8 = tile.lines.items;
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln].len));
+
+    if (tile.cursor.ch > new_ln_len)
+        tile.cursor.ch = new_ln_len;
+}
+
+pub fn moveCursorDown(tile: *Tile) !void {
+    tile.cursor.ln += 1;
+
+    const lines: [][]u8 = tile.lines.items;
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln].len));
+
+    if (tile.cursor.ch > new_ln_len)
+        tile.cursor.ch = new_ln_len;
+}
+
+pub fn moveCursorLeft(tile: *Tile) !void {
+
+    if (tile.cursor.ch > 0)
+        tile.cursor.ch -= 1;
+}
+
+pub fn moveCursorRight(tile: *Tile) !void {
+
+    const lines: [][]u8 = tile.lines.items;
+
+    if (tile.cursor.ch < lines[tile.cursor.ln].len)
+        tile.cursor.ch += 1;
 }
