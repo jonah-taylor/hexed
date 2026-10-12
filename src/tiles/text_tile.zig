@@ -25,10 +25,22 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
     outer: for (0..lines.len) |ln_i| {
         if (fixed_y1 + y == fixed_y2) break;
 
-        num = @as(u16, @intCast(ln_i)) + 1;
+        num = @abs(@as(i32, @intCast(ln_i)) - @as(i32, @intCast(tile.cursor.ln - 1)));
 
         // draw line number
         x = num_padding;
+
+        // handle cursor line
+        if (num == 0) {
+            num = @as(u16, @intCast(ln_i)) + 1;
+            digits = 0;
+            while (num > 0) : (num /= 10) {
+                digits += 1;
+            }
+            x = digits;
+            num = @as(u16, @intCast(ln_i)) + 1;
+        }
+
         while (num > 0) : (num /= 10) {
             x -= 1;
             const ch: u8 = '0' + @as(u8, @intCast(num % 10));

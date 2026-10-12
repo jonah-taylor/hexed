@@ -15,7 +15,8 @@ pub const App = struct {
     const Self = @This();
 
     pub const State = enum {
-        normal,
+        type,
+        edit,
         resize,
     };
 
@@ -29,7 +30,7 @@ pub const App = struct {
         return .{
             .io = io,
             .alloc = alloc,
-            .state = .normal,
+            .state = .edit,
             .stdout = stdout,
             .tiler = Tiler.init(alloc),
         };
@@ -53,6 +54,8 @@ pub fn runApp(app: *App) !void {
     try reader.interface.readSliceAll(contents);
 
     // END OF STUB
+
+    try term.setCursorBlock(app.stdout);
 
     try term.clear(app.stdout);
     var term_sz = term.getSize();
@@ -163,8 +166,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'h' => {
         try switch (app.state) {
-        .normal => tile_ops.moveCursorLeft(curr_tile),
+        .edit => tile_ops.moveCursorLeft(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.left, tlr.tile_idx, true),
+        else => {},
         };
     },
     'H' => {
@@ -173,8 +177,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'j' => {
         try switch (app.state) {
-        .normal => tile_ops.moveCursorDown(curr_tile),
+        .edit => tile_ops.moveCursorDown(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.down, tlr.tile_idx, true),
+        else => {},
         };
     },
     'J' => {
@@ -183,8 +188,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'k' => {
         try switch (app.state) {
-        .normal => tile_ops.moveCursorUp(curr_tile),
+        .edit => tile_ops.moveCursorUp(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.up, tlr.tile_idx, true),
+        else => {},
         };
     },
     'K' => {
@@ -193,8 +199,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'l' => {
         try switch (app.state) {
-        .normal => tile_ops.moveCursorRight(curr_tile),
+        .edit => tile_ops.moveCursorRight(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.right, tlr.tile_idx, true),
+        else => {},
         };
     },
     'L' => {
@@ -209,7 +216,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'R' => {
         if (app.state == .resize) {
-            app.state = .normal;
+            app.state = .edit;
         } else {
             app.state = .resize;
         }
@@ -232,6 +239,16 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
             }
         },
         else => {},
+        }
+    },
+    '\t' => {
+        if (app.state == .edit) {
+            app.state = .type;
+            try term.setCursorLine(app.stdout);
+        }
+        else {
+            app.state = .edit;
+            try term.setCursorBlock(app.stdout);
         }
     },
     else => {},

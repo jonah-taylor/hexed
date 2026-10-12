@@ -53,6 +53,14 @@ pub fn placeStrAt(stdout: *std.Io.Writer, row: u16, col: u16, str: []const u8) !
     try stdout.print("\x1b[{d};{d}H{s}", .{ row + 1, col + 1, str });
 }
 
+pub fn setCursorLine(stdout: *std.Io.Writer) !void {
+    try stdout.print("\x1b[6 q", .{});
+}
+
+pub fn setCursorBlock(stdout: *std.Io.Writer) !void {
+    try stdout.print("\x1b[1 q", .{});
+}
+
 pub fn saveCursorPos(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[s", .{});
 }
