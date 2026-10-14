@@ -1,11 +1,13 @@
 const std = @import("std");
+const ArrayList = std.ArrayList;
+
 const App = @import("../app.zig").App;
 const Tile = @import("tile.zig").Tile;
 const term_ops = @import("../terminal.zig");
 
 pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
 
-    const lines: [][]u8 = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.lines.items;
 
     var digits: u16 = 0;
     var num = lines.len;
@@ -25,10 +27,22 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
     outer: for (0..lines.len) |ln_i| {
         if (fixed_y1 + y == fixed_y2) break;
 
-        num = @as(u16, @intCast(ln_i)) + 1;
+        num = @abs(@as(i32, @intCast(ln_i)) - @as(i32, @intCast(tile.cursor.ln - 1)));
 
         // draw line number
         x = num_padding;
+
+        // handle cursor line
+        if (num == 0) {
+            num = @as(u16, @intCast(ln_i)) + 1;
+            digits = 0;
+            while (num > 0) : (num /= 10) {
+                digits += 1;
+            }
+            x = digits;
+            num = @as(u16, @intCast(ln_i)) + 1;
+        }
+
         while (num > 0) : (num /= 10) {
             x -= 1;
             const ch: u8 = '0' + @as(u8, @intCast(num % 10));
@@ -43,7 +57,7 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
         // draw line contents
         x = num_padding + 1;
 
-        for (lines[ln_i]) |ch| {
+        for (lines[ln_i].items) |ch| {
             if (fixed_x1 + x == fixed_x2) {
                 y += 1;
                 if (fixed_y1 + y == fixed_y2) break :outer;
@@ -94,7 +108,7 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
 
 pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 
-    const lines: [][]u8 = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.lines.items;
 
     var digits: u16 = 0;
     var num = lines.len;
@@ -120,7 +134,7 @@ pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 
         // iterate over contents for internal newlines
 
-        for (0..lines[ln_i].len + 1) |i| {
+        for (0..lines[ln_i].items.len + 1) |i| {
             if (fixed_x1 + x == fixed_x2) {
                 y += 1;
                 if (fixed_y1 + y == fixed_y2) break :outer;
@@ -143,26 +157,30 @@ pub fn moveCursorUp(tile: *Tile) !void {
     if (tile.cursor.ln > 1)
         tile.cursor.ln -= 1;
 
-    const lines: [][]u8 = tile.lines.items;
-    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].len));
+    const lines: []ArrayList(u8) = tile.lines.items;
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].items.len));
+
+    tile.cursor.ch = tile.cursor.ideal_ch;
 
     if (tile.cursor.ch > new_ln_len)
         tile.cursor.ch = new_ln_len + 1;
-    if (tile.cursor.ch < 1)
+    if (tile.cursor.ch == 0) // if there are no chars on a line
         tile.cursor.ch = 1;
 }
 
 pub fn moveCursorDown(tile: *Tile) !void {
-    const lines: [][]u8 = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.lines.items;
 
     if (tile.cursor.ln < lines.len)
         tile.cursor.ln += 1;
 
-    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].len));
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].items.len));
+
+    tile.cursor.ch = tile.cursor.ideal_ch;
 
     if (tile.cursor.ch > new_ln_len)
         tile.cursor.ch = new_ln_len + 1;
-    if (tile.cursor.ch < 1)
+    if (tile.cursor.ch == 0) // if there are no chars on a line
         tile.cursor.ch = 1;
 }
 
@@ -170,12 +188,17 @@ pub fn moveCursorLeft(tile: *Tile) !void {
 
     if (tile.cursor.ch > 1)
         tile.cursor.ch -= 1;
+
+    tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
 pub fn moveCursorRight(tile: *Tile) !void {
 
-    const lines: [][]u8 = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.lines.items;
 
-    if (tile.cursor.ch < lines[tile.cursor.ln - 1].len + 1)
+    if (tile.cursor.ch < lines[tile.cursor.ln - 1].items.len + 1)
         tile.cursor.ch += 1;
+
+    tile.cursor.ideal_ch = tile.cursor.ch;
 }
+

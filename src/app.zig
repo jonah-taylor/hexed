@@ -108,16 +108,43 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     const name = "build.zig";
     const curr_tile = tiler_ops.getTile(tlr);
     key = try term.getch();
+
     switch (key) {
-    'D' => {
-        tlr.tile_idx = tiler_ops.rmTile(tlr) catch {
-            try term.clear(app.stdout);
-            try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
-            try app.stdout.flush();
-            return false;
-        };
-        try term.clear(app.stdout);
+    '\t' => {
+        if (app.state == .edit) {
+            app.state = .type;
+            try term.setCursorLine(app.stdout);
+        }
+        else {
+            app.state = .edit;
+            try term.setCursorBlock(app.stdout);
+        }
+        return true;
     },
+    '\x08', '\x7f' => try tile_ops.typeBackspace(curr_tile),
+    '\r', '\n' => try tile_ops.typeEnter(curr_tile),
+    '\x1b' => {
+        var seq: [2]u8 = undefined;
+        if (try std.posix.read(0, &seq) == 2 and seq[0] == '[') {
+            switch (seq[1]) {
+            'A' => try tile_ops.moveCursorUp(curr_tile),
+            'B' => try tile_ops.moveCursorDown(curr_tile),
+            'D' => try tile_ops.moveCursorLeft(curr_tile),
+            'C' => try tile_ops.moveCursorRight(curr_tile),
+            else => {}
+            }
+        }
+    },
+    else => {
+        if (app.state == .type) {
+            if (key >= 32 and key <= 126)
+                try tile_ops.typeChar(curr_tile, key);
+            return true;
+        }
+    },
+    }
+
+    switch (key) {
     'c' => {
         key = try term.getch();
 
@@ -164,6 +191,18 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         else => {},
         }
     },
+    'D' => {
+        tlr.tile_idx = tiler_ops.rmTile(tlr) catch {
+            try term.clear(app.stdout);
+            try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
+            try app.stdout.flush();
+            return false;
+        };
+        try term.clear(app.stdout);
+    },
+    // 'g' => {
+    // goto
+    // },
     'h' => {
         try switch (app.state) {
         .edit => tile_ops.moveCursorLeft(curr_tile),
@@ -214,6 +253,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         app.stdout.flush() catch {};
         return false;
     },
+    // 'r' => {
+    // redo
+    // },
     'R' => {
         if (app.state == .resize) {
             app.state = .edit;
@@ -241,16 +283,9 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         else => {},
         }
     },
-    '\t' => {
-        if (app.state == .edit) {
-            app.state = .type;
-            try term.setCursorLine(app.stdout);
-        }
-        else {
-            app.state = .edit;
-            try term.setCursorBlock(app.stdout);
-        }
-    },
+    // 'u' => {
+    // undo
+    // },
     else => {},
     }
     return true;
