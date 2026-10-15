@@ -41,7 +41,7 @@ pub fn runApp(app: *App) !void {
 
     // START OF STUB
 
-    const file = try std.Io.Dir.cwd().openFile(app.io.*, "build.zig", .{});
+    const file = try std.Io.Dir.cwd().openFile(app.io.*, "src/tiles/text_tile.zig", .{});
     defer file.close(app.io.*);
 
     const stat = try file.stat(app.io.*);
@@ -151,19 +151,15 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         switch (key) {
         'k' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.up, true) catch {};
-            try term.clear(app.stdout);
         },
         'j' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.down, true) catch {};
-            try term.clear(app.stdout);
         },
         'h' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.left, true) catch {};
-            try term.clear(app.stdout);
         },
         'l' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.right, true) catch {};
-            try term.clear(app.stdout);
         },
         else => {},
         }

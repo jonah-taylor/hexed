@@ -5,6 +5,86 @@ const App = @import("../app.zig").App;
 const Tile = @import("tile.zig").Tile;
 const term_ops = @import("../terminal.zig");
 
+fn drawLine(tile: *Tile, stdout: *std.Io.Writer, state: *App.State, y_c: u16, ln_i: usize) !bool {
+
+    const lines: []ArrayList(u8) = tile.lines.items;
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
+    }
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
+    const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
+
+    num = @abs(@as(i32, @intCast(ln_i)) - @as(i32, @intCast(tile.cursor.ln - 1)));
+
+    var y: u16 = y_c;
+    var x: u16 = num_padding;
+
+    // handle cursor line number
+    if (num == 0) {
+        num = @as(u16, @intCast(ln_i)) + 1;
+        digits = 0;
+        while (num > 0) : (num /= 10) {
+            digits += 1;
+        }
+        x = digits;
+        num = @as(u16, @intCast(ln_i)) + 1;
+    }
+
+    if (y >= 0 and y <= fixed_y2 - fixed_y1) {
+        // handle other line numbers
+        while (num > 0) : (num /= 10) {
+            x -= 1;
+            const ch: u8 = '0' + @as(u8, @intCast(num % 10));
+
+            if (state.* == .resize)
+                try term_ops.setRed(stdout);
+            try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+            if (state.* == .resize)
+                try term_ops.colorReset(stdout);
+        }
+    }
+
+    // draw line contents
+    x = num_padding + 1;
+
+    for (lines[ln_i].items) |ch| {
+        if (fixed_x1 + x == fixed_x2) {
+            y +%= 1;
+            if (fixed_y1 + y == fixed_y2) return false;
+            x = num_padding + 1;
+        }
+
+        switch (ch) {
+        ' ' => {
+            try term_ops.setGray(stdout);
+            if (y >= 0 and y <= fixed_y2 - fixed_y1)
+                try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
+            try term_ops.colorReset(stdout);
+        },
+        else => {
+            if (y >= 0 and y <= fixed_y2 - fixed_y1)
+                try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+        },
+        }
+        x += 1;
+    }
+
+    if (fixed_x1 + x == fixed_x2) {
+        y +%= 1;
+        if (fixed_y1 + y == fixed_y2) return false;
+        x = num_padding + 1;
+    }
+
+    return true;
+}
+
 pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
 
     const lines: []ArrayList(u8) = tile.lines.items;
@@ -18,71 +98,49 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
 
     const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
     const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
-    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 1;
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
     const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
 
     var x: u16 = 0;
-    var y: u16 = 0;
+    var y: u16 = (fixed_y2 - fixed_y1) / 2;
 
-    outer: for (0..lines.len) |ln_i| {
-        if (fixed_y1 + y == fixed_y2) break;
-
-        num = @abs(@as(i32, @intCast(ln_i)) - @as(i32, @intCast(tile.cursor.ln - 1)));
-
-        // draw line number
-        x = num_padding;
-
-        // handle cursor line
-        if (num == 0) {
-            num = @as(u16, @intCast(ln_i)) + 1;
-            digits = 0;
-            while (num > 0) : (num /= 10) {
-                digits += 1;
-            }
-            x = digits;
-            num = @as(u16, @intCast(ln_i)) + 1;
-        }
-
-        while (num > 0) : (num /= 10) {
-            x -= 1;
-            const ch: u8 = '0' + @as(u8, @intCast(num % 10));
-
-            if (state.* == .resize)
-                try term_ops.setRed(stdout);
-            try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-            if (state.* == .resize)
-                try term_ops.colorReset(stdout);
-        }
-
-        // draw line contents
-        x = num_padding + 1;
-
-        for (lines[ln_i].items) |ch| {
-            if (fixed_x1 + x == fixed_x2) {
-                y += 1;
-                if (fixed_y1 + y == fixed_y2) break :outer;
-                x = num_padding + 1;
-            }
-
-            switch (ch) {
-            ' ' => {
-                try term_ops.setGray(stdout);
-                try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
-                try term_ops.colorReset(stdout);
-            },
-            else => try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch}),
-            }
-            x += 1;
-        }
-
-        if (fixed_x1 + x == fixed_x2) {
-            y += 1;
-            if (fixed_y1 + y == fixed_y2) break :outer;
-            x = num_padding + 1;
-        }
-
-        y += 1;
+    // draw lines above the type-line
+    for (0..(tile.cursor.ln - 1)) |i| {
+        const ln_i = tile.cursor.ln - 2 - i;
+        y -%= 1;
+        y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        if (!try drawLine(tile, stdout, state, y, ln_i)) break;
     }
+
+    if (y > (fixed_y2 - fixed_y1))
+        y = 0;
+
+    // draw padding lines after eof
+    for (0..y) |i| {
+        // draw ~
+        x = num_padding + 1;
+        const ch: u8 = '~';
+        try term_ops.setGray(stdout);
+        try term_ops.placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
+        try term_ops.colorReset(stdout);
+    }
+
+    y = (fixed_y2 - fixed_y1) / 2;
+
+    // draw type-line and lower
+    for ((tile.cursor.ln - 1)..lines.len) |ln_i| {
+        if (fixed_y1 + y == fixed_y2) break;
+        if (!try drawLine(tile, stdout, state, y, ln_i)) {
+            y +%= 1;
+            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            break;
+        }
+        y +%= 1;
+        y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+    }
+
+    if (y > (fixed_y2 - fixed_y1))
+        y = (fixed_y2 - fixed_y1);
 
     // draw padding lines after eof
     for (0..(fixed_y2 - (fixed_y1 + y))) |i| {
@@ -119,32 +177,30 @@ pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 
     const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
     const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
-    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 1;
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
     const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
 
+    const ln_i = tile.cursor.ln - 1;
+
     var x: u16 = 0;
-    var y: u16 = 0;
+    var y: u16 = (fixed_y2 - fixed_y1) / 2;
 
-    outer: for (0..lines.len) |ln_i| {
-        if (fixed_y1 + y == fixed_y2) break;
+    num = @as(u16, @intCast(ln_i)) + 1;
 
-        num = @as(u16, @intCast(ln_i)) + 1;
+    x = num_padding + 1;
 
-        x = num_padding + 1;
-
-        // iterate over contents for internal newlines
-
+    // iterate over contents for internal newlines
+    if (lines.len > 0) {
         for (0..lines[ln_i].items.len + 1) |i| {
             if (fixed_x1 + x == fixed_x2) {
-                y += 1;
-                if (fixed_y1 + y == fixed_y2) break :outer;
+                y +%= 1;
+                if (fixed_y1 + y == fixed_y2) return;
                 x = num_padding + 1;
             }
-            if (ln_i == tile.cursor.ln - 1 and i == tile.cursor.ch - 1) break :outer;
+            if (i == tile.cursor.ch - 1) break;
 
             x += 1;
         }
-        y += 1;
     }
 
     tile.cursor.x = x;

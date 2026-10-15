@@ -28,7 +28,6 @@ pub const Tile = struct {
     type: TileType,
     name: []const u8,
     lines: ArrayList(ArrayList(u8)),
-    line: u16,
 
     pub fn init(rect: Rectangle, alloc: std.mem.Allocator, buf: []u8, name: []const u8) Self {
         var lines: ArrayList(ArrayList(u8)) = .empty;
@@ -52,7 +51,6 @@ pub const Tile = struct {
             .type = TileType.text,
             .name = name,
             .lines = lines,
-            .line = 0,
         };
     }
 
