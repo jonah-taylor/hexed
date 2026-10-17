@@ -3,6 +3,10 @@ const term = @import("./terminal.zig");
 
 const Cursor = @import("./cursor.zig").Cursor;
 const Direction = @import("./geometry.zig").Direction;
+
+const frame_ops = @import("./frame.zig");
+const Frame = frame_ops.Frame;
+
 const Rectangle = @import("./geometry.zig").Rectangle;
 
 const tile_ops = @import("./tiles/tile.zig");
@@ -25,6 +29,7 @@ pub const App = struct {
     state: State,
     stdout: *std.Io.Writer,
     tiler: Tiler,
+    frame: Frame,
 
     pub fn init(io: *std.Io, stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
         return .{
@@ -33,6 +38,7 @@ pub const App = struct {
             .state = .edit,
             .stdout = stdout,
             .tiler = Tiler.init(alloc),
+            .frame = Frame.init(),
         };
     }
 };
@@ -59,45 +65,42 @@ pub fn runApp(app: *App) !void {
 
     try term.clear(app.stdout);
     var term_sz = term.getSize();
-    var prev_term_sz = term_sz;
+    var prev_term_sz = term.getSize();
     var curr_tile = tiler_ops.getTile(&app.tiler);
 
-    try drawTiles(app);
+    try drawTilesOnFrame(app);
+    try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
     app.stdout.flush() catch {};
 
     while (true) {
-
         if (!try processKeybinds(app, contents)) break;
 
         curr_tile = tiler_ops.getTile(&app.tiler);
 
-        if (app.state == .resize)
-            try term.clear(app.stdout);
-
         // window resizing
         term_sz = term.getSize();
-        if (term_sz.cols != prev_term_sz.cols or term_sz.rows != prev_term_sz.rows) {
+        if (prev_term_sz.rows != term_sz.rows or prev_term_sz.cols != term_sz.cols) {
             try term.clear(app.stdout);
+            app.frame.prev = @splat(@splat(' '));
+            prev_term_sz = term_sz;
         }
 
-        prev_term_sz = term_sz;
-
-        try drawTiles(app);
+        try drawTilesOnFrame(app);
 
         if (app.state == .resize)
             try term.colorReset(app.stdout);
 
+        try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
+        app.frame.mat = @splat(@splat(' '));
         try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
         app.stdout.flush() catch {};
     }
 }
 
-fn drawTiles(app: *App) !void {
-    try term.clear(app.stdout);
+fn drawTilesOnFrame(app: *App) !void {
     try term.saveCursorPos(app.stdout);
     for (0..app.tiler.tiles_len) |i| {
-        // try term.drawRectangle(app.stdout, &app.tiler.tiles[i], &app.state);
-        try term.drawTile(app.stdout, &app.tiler.tiles[i], &app.state);
+        try tile_ops.drawTileOnFrame(&app.tiler.tiles[i], &app.frame, &app.state);
     }
     try term.loadCursorPos(app.stdout);
 }
@@ -170,19 +173,15 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         switch (key) {
         'k' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.up, false) catch {};
-            try term.clear(app.stdout);
         },
         'j' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.down, false) catch {};
-            try term.clear(app.stdout);
         },
         'h' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.left, false) catch {};
-            try term.clear(app.stdout);
         },
         'l' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.right, false) catch {};
-            try term.clear(app.stdout);
         },
         else => {},
         }
@@ -194,7 +193,6 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
             try app.stdout.flush();
             return false;
         };
-        try term.clear(app.stdout);
     },
     // 'g' => {
     // goto

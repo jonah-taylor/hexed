@@ -2,10 +2,12 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 
 const App = @import("../app.zig").App;
+const Frame = @import("../frame.zig").Frame;
 const Tile = @import("tile.zig").Tile;
 const term_ops = @import("../terminal.zig");
 
-fn drawLine(tile: *Tile, stdout: *std.Io.Writer, state: *App.State, y_c: u16, ln_i: usize) !bool {
+fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i: usize) !bool {
+    _ = state;
 
     const lines: []ArrayList(u8) = tile.lines.items;
 
@@ -43,11 +45,12 @@ fn drawLine(tile: *Tile, stdout: *std.Io.Writer, state: *App.State, y_c: u16, ln
             x -= 1;
             const ch: u8 = '0' + @as(u8, @intCast(num % 10));
 
-            if (state.* == .resize)
-                try term_ops.setRed(stdout);
-            try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-            if (state.* == .resize)
-                try term_ops.colorReset(stdout);
+            // if (state.* == .resize)
+            //     try term_ops.setRed(stdout);
+            // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+            frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ch;
+            // if (state.* == .resize)
+            //     try term_ops.colorReset(stdout);
         }
     }
 
@@ -63,14 +66,16 @@ fn drawLine(tile: *Tile, stdout: *std.Io.Writer, state: *App.State, y_c: u16, ln
 
         switch (ch) {
         ' ' => {
-            try term_ops.setGray(stdout);
+            // try term_ops.setGray(stdout);
             if (y >= 0 and y <= fixed_y2 - fixed_y1)
-                try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
-            try term_ops.colorReset(stdout);
+                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
+                frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ' ';
+            // try term_ops.colorReset(stdout);
         },
         else => {
             if (y >= 0 and y <= fixed_y2 - fixed_y1)
-                try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
+                frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ch;
         },
         }
         x += 1;
@@ -85,7 +90,7 @@ fn drawLine(tile: *Tile, stdout: *std.Io.Writer, state: *App.State, y_c: u16, ln
     return true;
 }
 
-pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
+pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void {
 
     const lines: []ArrayList(u8) = tile.lines.items;
 
@@ -109,7 +114,7 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
         const ln_i = tile.cursor.ln - 2 - i;
         y -%= 1;
         y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
-        if (!try drawLine(tile, stdout, state, y, ln_i)) break;
+        if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) break;
     }
 
     if (y > (fixed_y2 - fixed_y1))
@@ -120,9 +125,10 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
         // draw ~
         x = num_padding + 1;
         const ch: u8 = '~';
-        try term_ops.setGray(stdout);
-        try term_ops.placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
-        try term_ops.colorReset(stdout);
+        // try term_ops.setGray(stdout);
+        // try term_ops.placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
+        frame.mat[@as(usize, fixed_y1) + i][@as(usize, fixed_x1)] = ch;
+        // try term_ops.colorReset(stdout);
     }
 
     y = (fixed_y2 - fixed_y1) / 2;
@@ -130,7 +136,7 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
     // draw type-line and lower
     for ((tile.cursor.ln - 1)..lines.len) |ln_i| {
         if (fixed_y1 + y == fixed_y2) break;
-        if (!try drawLine(tile, stdout, state, y, ln_i)) {
+        if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) {
             y +%= 1;
             y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
             break;
@@ -147,9 +153,10 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
         // draw ~
         x = num_padding + 1;
         const ch: u8 = '~';
-        try term_ops.setGray(stdout);
-        try term_ops.placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
-        try term_ops.colorReset(stdout);
+        // try term_ops.setGray(stdout);
+        // try term_ops.placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
+        frame.mat[@as(usize, fixed_y1 + y) + i][@as(usize, fixed_x1)] = ch;
+        // try term_ops.colorReset(stdout);
     }
 
     // draw filename
@@ -159,7 +166,7 @@ pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !voi
 
     for (tile.name) |ch| {
         if (x >= fixed_x2) break;
-        try term_ops.placeStrAt(stdout, y, x, &[_]u8{ch});
+        frame.mat[y][x] = ch;
         x += 1;
     }
 }

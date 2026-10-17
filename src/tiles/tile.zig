@@ -3,6 +3,7 @@ const ArrayList = std.ArrayList;
 
 const App = @import("../app.zig").App;
 const Cursor = @import("../cursor.zig").Cursor;
+const Frame = @import("../frame.zig").Frame;
 const Rectangle = @import("../geometry.zig").Rectangle;
 
 const bufs_tile_ops = @import("bufs_tile.zig");
@@ -66,64 +67,70 @@ pub fn hasCoord(tile: *Tile, x: u16, y: u16) bool {
     return x >= tile.rect.x1 and x <= tile.rect.x2 and y >= tile.rect.y1 and y <= tile.rect.y2;
 }
 
-pub fn drawContents(tile: *Tile, stdout: *std.Io.Writer, state: *App.State) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.drawContents(tile, stdout, state),
-    .files => try files_tile_ops.drawContents(tile, stdout, state),
-    .grep => try grep_tile_ops.drawContents(tile, stdout, state),
-    .shell => try shell_tile_ops.drawContents(tile, stdout, state),
-    .text => try text_tile_ops.drawContents(tile, stdout, state),
-    }
+pub fn drawTileOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void {
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.drawContents(tile, stdout, state),
+    // .files => try files_tile_ops.drawContents(tile, stdout, state),
+    // .grep => try grep_tile_ops.drawContents(tile, frame, state),
+    // .shell => try shell_tile_ops.drawContents(tile, frame, state),
+    // .text => 
+    // }
+    try text_tile_ops.drawContentsOnFrame(tile, frame, state);
 }
 
 pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.updateCursor(tile, stdout),
-    .files => try files_tile_ops.updateCursor(tile, stdout),
-    .grep => try grep_tile_ops.updateCursor(tile, stdout),
-    .shell => try shell_tile_ops.updateCursor(tile, stdout),
-    .text => try text_tile_ops.updateCursor(tile, stdout),
-    }
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.updateCursor(tile, stdout),
+    // .files => try files_tile_ops.updateCursor(tile, stdout),
+    // .grep => try grep_tile_ops.updateCursor(tile, stdout),
+    // .shell => try shell_tile_ops.updateCursor(tile, stdout),
+    // .text => 
+    // }
+    try text_tile_ops.updateCursor(tile, stdout);
 }
 
 pub fn moveCursorUp(tile: *Tile) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.moveCursorUp(tile),
-    .files => try files_tile_ops.moveCursorUp(tile),
-    .grep => try grep_tile_ops.moveCursorUp(tile),
-    .shell => try shell_tile_ops.moveCursorUp(tile),
-    .text => try text_tile_ops.moveCursorUp(tile),
-    }
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.moveCursorUp(tile),
+    // .files => try files_tile_ops.moveCursorUp(tile),
+    // .grep => try grep_tile_ops.moveCursorUp(tile),
+    // .shell => try shell_tile_ops.moveCursorUp(tile),
+    // .text => 
+    // }
+    try text_tile_ops.moveCursorUp(tile);
 }
 
 pub fn moveCursorLeft(tile: *Tile) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.moveCursorLeft(tile),
-    .files => try files_tile_ops.moveCursorLeft(tile),
-    .grep => try grep_tile_ops.moveCursorLeft(tile),
-    .shell => try shell_tile_ops.moveCursorLeft(tile),
-    .text => try text_tile_ops.moveCursorLeft(tile),
-    }
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.moveCursorLeft(tile),
+    // .files => try files_tile_ops.moveCursorLeft(tile),
+    // .grep => try grep_tile_ops.moveCursorLeft(tile),
+    // .shell => try shell_tile_ops.moveCursorLeft(tile),
+    // .text => try 
+    // }
+    try text_tile_ops.moveCursorLeft(tile);
 }
 
 pub fn moveCursorRight(tile: *Tile) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.moveCursorRight(tile),
-    .files => try files_tile_ops.moveCursorRight(tile),
-    .grep => try grep_tile_ops.moveCursorRight(tile),
-    .shell => try shell_tile_ops.moveCursorRight(tile),
-    .text => try text_tile_ops.moveCursorRight(tile),
-    }
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.moveCursorRight(tile),
+    // .files => try files_tile_ops.moveCursorRight(tile),
+    // .grep => try grep_tile_ops.moveCursorRight(tile),
+    // .shell => try shell_tile_ops.moveCursorRight(tile),
+    // .text => try 
+    // }
+    try text_tile_ops.moveCursorRight(tile);
 }
 
 pub fn moveCursorDown(tile: *Tile) !void {
-    switch (tile.type) {
-    .buffers => try bufs_tile_ops.moveCursorDown(tile),
-    .files => try files_tile_ops.moveCursorDown(tile),
-    .grep => try grep_tile_ops.moveCursorDown(tile),
-    .shell => try shell_tile_ops.moveCursorDown(tile),
-    .text => try text_tile_ops.moveCursorDown(tile),
-    }
+    // switch (tile.type) {
+    // .buffers => try bufs_tile_ops.moveCursorDown(tile),
+    // .files => try files_tile_ops.moveCursorDown(tile),
+    // .grep => try grep_tile_ops.moveCursorDown(tile),
+    // .shell => try shell_tile_ops.moveCursorDown(tile),
+    // .text => 
+    // }
+    try text_tile_ops.moveCursorDown(tile);
 }
 
 pub fn typeBackspace(tile: *Tile) !void {

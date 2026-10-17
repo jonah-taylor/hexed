@@ -1,33 +1,6 @@
 const std = @import("std");
 
 const App = @import("app.zig").App;
-const tile_ops = @import("tiles/tile.zig");
-const Tile = tile_ops.Tile;
-
-pub fn drawTile(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
-    try tile_ops.drawContents(tile, stdout, state);
-}
-
-pub fn drawRectangle(stdout: *std.Io.Writer, tile: *Tile, state: *App.State) !void {
-    const fixed_x1 = fixedFromPercX(tile.rect.x1);
-    const fixed_y1 = fixedFromPercY(tile.rect.y1);
-    const fixed_x2 = fixedFromPercX(tile.rect.x2);
-    const fixed_y2 = fixedFromPercY(tile.rect.y2);
-
-    if (state.* == .resize)
-        try setRed(stdout);
-
-    for (0..fixed_x2 - fixed_x1) |x| {
-        try placeStrAt(stdout, fixed_y1, fixed_x1 + @as(u16, @intCast(x)), "+");
-        try placeStrAt(stdout, fixed_y2, fixed_x1 + @as(u16, @intCast(x)), "+");
-    }
-    for (0..fixed_y2 - fixed_y1) |y| {
-        try placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(y)), fixed_x1, "+");
-        try placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(y)), fixed_x2, "+");
-    }
-
-    try colorReset(stdout);
-}
 
 pub fn clear(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[2J", .{});
