@@ -7,7 +7,6 @@ const Tile = @import("tile.zig").Tile;
 const term_ops = @import("../terminal.zig");
 
 fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i: usize) !bool {
-    _ = state;
 
     const lines: []ArrayList(u8) = tile.lines.items;
 
@@ -45,12 +44,9 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
             x -= 1;
             const ch: u8 = '0' + @as(u8, @intCast(num % 10));
 
-            // if (state.* == .resize)
-            //     try term_ops.setRed(stdout);
-            // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-            frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ch;
-            // if (state.* == .resize)
-            //     try term_ops.colorReset(stdout);
+            frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } };
+            if (state.* == .resize)
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x].fg = 31;
         }
     }
 
@@ -66,16 +62,15 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
 
         switch (ch) {
         ' ' => {
-            // try term_ops.setGray(stdout);
             if (y >= 0 and y <= fixed_y2 - fixed_y1)
-                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{0xC2, 0xB7});
-                frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ' ';
-            // try term_ops.colorReset(stdout);
+                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8){ 0xC2, 0xB7 };
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ 0xC2, 0xB7, 0, 0 }, .len = 2, .fg = 90 };
         },
         else => {
             if (y >= 0 and y <= fixed_y2 - fixed_y1)
                 // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-                frame.mat[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = ch;
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } };
+
         },
         }
         x += 1;
@@ -127,7 +122,7 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
         const ch: u8 = '~';
         // try term_ops.setGray(stdout);
         // try term_ops.placeStrAt(stdout, fixed_y1 + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
-        frame.mat[@as(usize, fixed_y1) + i][@as(usize, fixed_x1)] = ch;
+        frame.curr[@as(usize, fixed_y1) + i][@as(usize, fixed_x1)] = .{ .ch = .{ ch, 0, 0, 0 } };
         // try term_ops.colorReset(stdout);
     }
 
@@ -155,7 +150,7 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
         const ch: u8 = '~';
         // try term_ops.setGray(stdout);
         // try term_ops.placeStrAt(stdout, fixed_y1 + y + @as(u16, @intCast(i)), fixed_x1, &[_]u8{ch});
-        frame.mat[@as(usize, fixed_y1 + y) + i][@as(usize, fixed_x1)] = ch;
+        frame.curr[@as(usize, fixed_y1 + y) + i][@as(usize, fixed_x1)] = .{ .ch = .{ ch, 0, 0, 0 } };
         // try term_ops.colorReset(stdout);
     }
 
@@ -166,7 +161,7 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
 
     for (tile.name) |ch| {
         if (x >= fixed_x2) break;
-        frame.mat[y][x] = ch;
+        frame.curr[y][x] = .{ .ch = .{ ch, 0, 0, 0 } };
         x += 1;
     }
 }

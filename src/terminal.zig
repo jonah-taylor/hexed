@@ -6,8 +6,21 @@ pub fn clear(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[2J", .{});
 }
 
+pub fn showCursor(stdout: *std.Io.Writer) !void {
+    try stdout.print("\x1b[?25h", .{});
+}
+
+pub fn hideCursor(stdout: *std.Io.Writer) !void {
+    try stdout.print("\x1b[?25l", .{});
+}
+
 pub fn moveCursorTo(stdout: *std.Io.Writer, row: u16, col: u16) !void {
     try stdout.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+}
+
+pub fn setColors(stdout: *std.Io.Writer, fg: u8, bg: u8) !void {
+        try stdout.print("\x1b[{d}m", .{bg});
+        try stdout.print("\x1b[{d}m", .{fg});
 }
 
 pub fn setRed(stdout: *std.Io.Writer) !void {

@@ -81,7 +81,7 @@ pub fn runApp(app: *App) !void {
         term_sz = term.getSize();
         if (prev_term_sz.rows != term_sz.rows or prev_term_sz.cols != term_sz.cols) {
             try term.clear(app.stdout);
-            app.frame.prev = @splat(@splat(' '));
+            app.frame.prev = @splat(@splat(.{ .ch = .{'.', 0, 0, 0} }));
             prev_term_sz = term_sz;
         }
 
@@ -91,7 +91,7 @@ pub fn runApp(app: *App) !void {
             try term.colorReset(app.stdout);
 
         try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
-        app.frame.mat = @splat(@splat(' '));
+        app.frame.curr = @splat(@splat(.{ .ch = .{' ', 0, 0, 0} }));
         try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
         app.stdout.flush() catch {};
     }
