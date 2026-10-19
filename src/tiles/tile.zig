@@ -153,11 +153,50 @@ pub fn typeEnter(tile: *Tile) !void {
     const lines = &tile.lines.items;
     const cln = tile.cursor.ln;
     const cch = tile.cursor.ch;
+    // get spaces
+    var spaces: u16 = 0;
+    while (lines.*[cln - 1].items.len > 0 and lines.*[cln - 1].items[spaces] == ' ') : (spaces += 1) {}
     try tile.lines.insert(tile.alloc, cln, .empty);
+    for (0..spaces) |_| try lines.*[cln].append(tile.alloc, ' ');
     try lines.*[cln].appendSlice(tile.alloc, lines.*[cln - 1].items[(cch - 1)..]);
     lines.*[cln - 1].shrinkRetainingCapacity(lines.*[cln - 1].items.len - (lines.*[cln - 1].items.len - (cch - 1)));
     tile.cursor.ln += 1;
-    tile.cursor.ch = 1;
+    tile.cursor.ch = spaces + 1;
+    tile.cursor.ideal_ch = tile.cursor.ch;
+}
+
+pub fn typeFrontDeTab(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    var spaces: u16 = 0;
+    while (lines.*[cln].items.len > spaces and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+    spaces = 4 - spaces % 4;
+    if (spaces == 4) spaces = 0;
+    while (lines.*[cln].items.len != 0 and lines.*[cln].items[0] == ' ' and spaces < 4) : (spaces += 1) {
+        _ = lines.*[cln].orderedRemove(0);
+    if (tile.cursor.ch > 1)
+            tile.cursor.ch -= 1;
+    }
+}
+
+pub fn typeFrontTab(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    var spaces: u16 = 0;
+    while (lines.*[cln].items.len > spaces and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+    for (0..(4 - spaces % 4)) |_| try lines.*[cln].insert(tile.alloc, 0, ' ');
+    tile.cursor.ch += 4 - spaces % 4;
+    tile.cursor.ideal_ch = tile.cursor.ch;
+}
+
+pub fn typeTab(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln;
+    const cch = tile.cursor.ch;
+    var spaces: u16 = 1;
+    while ((cch - 1 + spaces) % 4 != 0) : (spaces += 1) {}
+    for (0..spaces) |_| try lines.*[cln - 1].insert(tile.alloc, cch - 1, ' ');
+    tile.cursor.ch += spaces;
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
 

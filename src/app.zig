@@ -127,8 +127,11 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     '\x08', '\x7f' => try tile_ops.typeBackspace(curr_tile),
     '\r', '\n' => try tile_ops.typeEnter(curr_tile),
     '\x1b' => {
-        var seq: [2]u8 = undefined;
-        if (try std.posix.read(0, &seq) == 2 and seq[0] == '[') {
+        var seq: [16]u8 = undefined;
+        const n = try std.posix.read(0, &seq);
+        const s: []const u8 = seq[0..n];
+
+        if (s.len == 2 and seq[0] == '[') {
             switch (seq[1]) {
             'A' => try tile_ops.moveCursorUp(curr_tile),
             'B' => try tile_ops.moveCursorDown(curr_tile),
@@ -136,10 +139,12 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
             'C' => try tile_ops.moveCursorRight(curr_tile),
             else => {}
             }
+        } else if (std.mem.eql(u8, s, "[105;5u")) {
+            try tile_ops.typeTab(curr_tile);
         }
     },
     else => {
-        if (app.state == .type) {
+        if (app.state == .type or key == ' ') {
             if (key >= 32 and key <= 126)
                 try tile_ops.typeChar(curr_tile, key);
             return true;
@@ -280,6 +285,12 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     // 'u' => {
     // undo
     // },
+    '<' => {
+        try tile_ops.typeFrontDeTab(curr_tile);
+    },
+    '>' => {
+        try tile_ops.typeFrontTab(curr_tile);
+    },
     else => {},
     }
     return true;

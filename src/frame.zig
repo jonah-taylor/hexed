@@ -15,8 +15,8 @@ pub const Cell = struct {
 pub const Frame = struct {
     const Self = @This();
 
-    prev: [1000][1000]Cell,
-    curr: [1000][1000]Cell,
+    prev: [300][300]Cell,
+    curr: [300][300]Cell,
 
     pub fn init() Self {
         return .{
