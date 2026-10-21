@@ -200,6 +200,19 @@ pub fn typeTab(tile: *Tile) !void {
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
+pub fn typeNLUp(tile: *Tile) !void {
+    const cln = tile.cursor.ln - 1;
+    try tile.lines.insert(tile.alloc, cln, .empty);
+    tile.cursor.ch = 1;
+}
+
+pub fn typeNLDown(tile: *Tile) !void {
+    const cln = tile.cursor.ln - 1;
+    try tile.lines.insert(tile.alloc, cln + 1, .empty);
+    tile.cursor.ch = 1;
+    tile.cursor.ln += 1;
+}
+
 pub fn typeChar(tile: *Tile, ch: u8) !void {
     try tile.lines.items[tile.cursor.ln - 1].insert(tile.alloc, tile.cursor.ch - 1, ch);
     tile.cursor.ch += 1;

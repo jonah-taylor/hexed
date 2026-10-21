@@ -54,9 +54,9 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
     x = num_padding + 1;
 
     for (lines[ln_i].items) |ch| {
-        if (fixed_x1 + x == fixed_x2) {
+        if (fixed_x1 + x >= fixed_x2) {
             y +%= 1;
-            if (fixed_y1 + y == fixed_y2) return false;
+            if (fixed_y1 +% y == fixed_y2) return false;
             x = num_padding + 1;
         }
 
@@ -108,7 +108,11 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
     for (0..(tile.cursor.ln - 1)) |i| {
         const ln_i = tile.cursor.ln - 2 - i;
         y -%= 1;
-        y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        if (fixed_x2 > fixed_x1 + num_padding + 1) {
+            y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        } else {
+            y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+        }
         if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) break;
     }
 
@@ -133,11 +137,19 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
         if (fixed_y1 + y == fixed_y2) break;
         if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) {
             y +%= 1;
-            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            if (fixed_x2 > fixed_x1 + num_padding + 1) {
+                y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            } else {
+                y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+            }
             break;
         }
         y +%= 1;
-        y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        if (fixed_x2 > fixed_x1 + num_padding + 1) {
+            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        } else {
+            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+        }
     }
 
     if (y > (fixed_y2 - fixed_y1))
@@ -194,7 +206,7 @@ pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
     // iterate over contents for internal newlines
     if (lines.len > 0) {
         for (0..lines[ln_i].items.len + 1) |i| {
-            if (fixed_x1 + x == fixed_x2) {
+            if (fixed_x1 + x >= fixed_x2) {
                 y +%= 1;
                 if (fixed_y1 + y == fixed_y2) return;
                 x = num_padding + 1;

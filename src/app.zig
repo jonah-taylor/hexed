@@ -47,7 +47,7 @@ pub fn runApp(app: *App) !void {
 
     // START OF STUB
 
-    const file = try std.Io.Dir.cwd().openFile(app.io.*, "src/tiles/text_tile.zig", .{});
+    const file = try std.Io.Dir.cwd().openFile(app.io.*, "build.zig", .{});
     defer file.close(app.io.*);
 
     const stat = try file.stat(app.io.*);
@@ -245,6 +245,12 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     'L' => {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.right)
             orelse return true;
+    },
+    'n' => {
+        try tile_ops.typeNLDown(curr_tile);
+    },
+    'N' => {
+        try tile_ops.typeNLUp(curr_tile);
     },
     'q' => {
         try term.clear(app.stdout);
