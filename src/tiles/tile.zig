@@ -135,15 +135,16 @@ pub fn moveCursorDown(tile: *Tile) !void {
 
 pub fn typeBackspace(tile: *Tile) !void {
     const lines = &tile.lines.items;
-    const cln = tile.cursor.ln;
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
     if (tile.cursor.ch == 1) {
         if (cln == 1) return;
         tile.cursor.ln -= 1;
-        tile.cursor.ch = @as(u16, @intCast(lines.*[cln - 2].items.len + 1));
-        try lines.*[cln - 2].appendSlice(tile.alloc, lines.*[cln - 1].items[0..]);
-        _ = tile.lines.orderedRemove(cln - 1);
+        tile.cursor.ch = @as(u16, @intCast(lines.*[cln - 1].items.len + 1));
+        try lines.*[cln - 1].appendSlice(tile.alloc, lines.*[cln].items[0..]);
+        _ = tile.lines.orderedRemove(cln);
     } else {
-        _ = tile.lines.items[tile.cursor.ln - 1].orderedRemove(tile.cursor.ch - 2);
+        _ = tile.lines.items[cln].orderedRemove(cch - 1);
         tile.cursor.ch -= 1;
     }
     tile.cursor.ideal_ch = tile.cursor.ch;
@@ -151,15 +152,21 @@ pub fn typeBackspace(tile: *Tile) !void {
 
 pub fn typeEnter(tile: *Tile) !void {
     const lines = &tile.lines.items;
-    const cln = tile.cursor.ln;
-    const cch = tile.cursor.ch;
-    // get spaces
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
+
+    // count spaces in current line
     var spaces: u16 = 0;
-    while (lines.*[cln - 1].items.len > 0 and lines.*[cln - 1].items[spaces] == ' ') : (spaces += 1) {}
-    try tile.lines.insert(tile.alloc, cln, .empty);
-    for (0..spaces) |_| try lines.*[cln].append(tile.alloc, ' ');
-    try lines.*[cln].appendSlice(tile.alloc, lines.*[cln - 1].items[(cch - 1)..]);
-    lines.*[cln - 1].shrinkRetainingCapacity(lines.*[cln - 1].items.len - (lines.*[cln - 1].items.len - (cch - 1)));
+    while (lines.*[cln].items.len > 0 and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+
+    // fill second line
+    try tile.lines.insert(tile.alloc, cln + 1, .empty);
+    for (0..spaces) |_| try lines.*[cln + 1].append(tile.alloc, ' ');
+    try lines.*[cln + 1].appendSlice(tile.alloc, lines.*[cln].items[(cch)..]);
+
+    // trim the first line
+    lines.*[cln].shrinkRetainingCapacity(lines.*[cln].items.len - (lines.*[cln].items.len - (cch)));
+
     tile.cursor.ln += 1;
     tile.cursor.ch = spaces + 1;
     tile.cursor.ideal_ch = tile.cursor.ch;
@@ -191,11 +198,11 @@ pub fn typeFrontTab(tile: *Tile) !void {
 
 pub fn typeTab(tile: *Tile) !void {
     const lines = &tile.lines.items;
-    const cln = tile.cursor.ln;
-    const cch = tile.cursor.ch;
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
     var spaces: u16 = 1;
-    while ((cch - 1 + spaces) % 4 != 0) : (spaces += 1) {}
-    for (0..spaces) |_| try lines.*[cln - 1].insert(tile.alloc, cch - 1, ' ');
+    while ((cch + spaces) % 4 != 0) : (spaces += 1) {}
+    for (0..spaces) |_| try lines.*[cln].insert(tile.alloc, cch, ' ');
     tile.cursor.ch += spaces;
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
@@ -214,8 +221,30 @@ pub fn typeNLDown(tile: *Tile) !void {
 }
 
 pub fn typeChar(tile: *Tile, ch: u8) !void {
-    try tile.lines.items[tile.cursor.ln - 1].insert(tile.alloc, tile.cursor.ch - 1, ch);
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
+    try tile.lines.items[cln].insert(tile.alloc, cch, ch);
     tile.cursor.ch += 1;
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
+pub fn delLn(tile: *Tile) !void {
+    const cln = tile.cursor.ln - 1;
+    _ = tile.lines.orderedRemove(cln);
+}
+
+pub fn delLnBack(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
+    lines.*[cln].shrinkRetainingCapacity(lines.*[cln].items.len - (lines.*[cln].items.len - (cch)));
+}
+
+pub fn delLnFront(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    const cch = tile.cursor.ch - 1;
+    try tile.lines.insert(tile.alloc, cln, .empty);
+    try lines.*[cln].appendSlice(tile.alloc, lines.*[cln + 1].items[(cch)..]);
+    _ = tile.lines.orderedRemove(cln + 1);
+}

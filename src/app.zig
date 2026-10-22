@@ -191,6 +191,21 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         else => {},
         }
     },
+    'd' => {
+        key = try term.getch();
+        switch (key) {
+        'd' => {
+            try tile_ops.delLn(curr_tile);
+        },
+        'f' => {
+            try tile_ops.delLnFront(curr_tile);
+        },
+        'b' => {
+            try tile_ops.delLnBack(curr_tile);
+        },
+        else => {},
+        }
+    },
     'D' => {
         tlr.tile_idx = tiler_ops.rmTile(tlr) catch {
             try term.clear(app.stdout);
@@ -253,10 +268,16 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         try tile_ops.typeNLUp(curr_tile);
     },
     'q' => {
-        try term.clear(app.stdout);
-        try term.moveCursorTo(app.stdout, 0, 0);
-        app.stdout.flush() catch {};
-        return false;
+        key = try term.getch();
+        switch (key) {
+        'q' => {
+            try term.clear(app.stdout);
+            try term.moveCursorTo(app.stdout, 0, 0);
+            app.stdout.flush() catch {};
+            return false;
+        },
+        else => {},
+        }
     },
     // 'r' => {
     // redo
