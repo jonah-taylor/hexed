@@ -318,6 +318,22 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     '>' => {
         try tile_ops.typeFrontTab(curr_tile);
     },
+    ':' => {
+        try tile_ops.heavyCursorLeft(curr_tile);
+    },
+    'm' => {
+        for (0..10) |_| {
+            try tile_ops.moveCursorDown(curr_tile);
+        }
+    },
+    'M' => {
+        for (0..10) |_| {
+            try tile_ops.moveCursorUp(curr_tile);
+        }
+    },
+    ';' => {
+        try tile_ops.heavyCursorRight(curr_tile);
+    },
     else => {},
     }
     return true;

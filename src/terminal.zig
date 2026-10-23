@@ -62,11 +62,14 @@ pub fn setTermios(termios_cfg: std.posix.termios) void {
 pub fn createRawTermiosFrom(termios: std.posix.termios) std.posix.termios {
 
     var raw_termios = termios;
-    raw_termios.lflag.ECHO = false; // don't echo chars
-    raw_termios.lflag.ICANON = false; // read input by bytes
-    raw_termios.lflag.ISIG = false; // disable ctrl z and c
-    // raw_termios.cc[@intFromEnum(std.posix.V.INTR)] = 0; // disable ctrl c
-    raw_termios.iflag.IXON = false; // disable ctrl s/q
+    raw_termios.iflag.ICRNL = false; // don't translate enter into newline
+    raw_termios.iflag.INLCR = false; // don't translate newline into carriage enter
+    raw_termios.iflag.IGNCR = false; // don't ignore enter
+    raw_termios.lflag.ECHO = false;  // don't echo typed characters to the terminal
+    raw_termios.lflag.ICANON = false; // disable canonical mode; read input byte by byte
+    raw_termios.lflag.ISIG = false;  // don't generate signals for ctrl+c, ctrl+z, etc.
+    raw_termios.iflag.IXON = false;  // disable software flow control ctrl+s, ctrl+q
+    raw_termios.lflag.IEXTEN = false;
 
     return raw_termios;
 }

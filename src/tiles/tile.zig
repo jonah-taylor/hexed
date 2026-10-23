@@ -137,8 +137,9 @@ pub fn typeBackspace(tile: *Tile) !void {
     const lines = &tile.lines.items;
     const cln = tile.cursor.ln - 1;
     const cch = tile.cursor.ch - 1;
+
     if (tile.cursor.ch == 1) {
-        if (cln == 1) return;
+        if (cln == 0) return;
         tile.cursor.ln -= 1;
         tile.cursor.ch = @as(u16, @intCast(lines.*[cln - 1].items.len + 1));
         try lines.*[cln - 1].appendSlice(tile.alloc, lines.*[cln].items[0..]);
@@ -157,7 +158,7 @@ pub fn typeEnter(tile: *Tile) !void {
 
     // count spaces in current line
     var spaces: u16 = 0;
-    while (lines.*[cln].items.len > 0 and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+    while (lines.*[cln].items.len > 0 and spaces < lines.*[cln].items.len and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
 
     // fill second line
     try tile.lines.insert(tile.alloc, cln + 1, .empty);
@@ -208,15 +209,31 @@ pub fn typeTab(tile: *Tile) !void {
 }
 
 pub fn typeNLUp(tile: *Tile) !void {
+    const lines = &tile.lines.items;
     const cln = tile.cursor.ln - 1;
+
+    // count spaces in current line
+    var spaces: u16 = 0;
+    while (lines.*[cln].items.len > 0 and spaces < lines.*[cln].items.len and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+
     try tile.lines.insert(tile.alloc, cln, .empty);
-    tile.cursor.ch = 1;
+    for (0..spaces) |_| try lines.*[cln].append(tile.alloc, ' ');
+
+    tile.cursor.ch = spaces + 1;
 }
 
 pub fn typeNLDown(tile: *Tile) !void {
+    const lines = &tile.lines.items;
     const cln = tile.cursor.ln - 1;
+
+    // count spaces in current line
+    var spaces: u16 = 0;
+    while (lines.*[cln].items.len > 0 and spaces < lines.*[cln].items.len and lines.*[cln].items[spaces] == ' ') : (spaces += 1) {}
+
     try tile.lines.insert(tile.alloc, cln + 1, .empty);
-    tile.cursor.ch = 1;
+    for (0..spaces) |_| try lines.*[cln + 1].append(tile.alloc, ' ');
+
+    tile.cursor.ch = spaces + 1;
     tile.cursor.ln += 1;
 }
 
@@ -229,8 +246,16 @@ pub fn typeChar(tile: *Tile, ch: u8) !void {
 }
 
 pub fn delLn(tile: *Tile) !void {
+    const lines = &tile.lines.items;
     const cln = tile.cursor.ln - 1;
-    _ = tile.lines.orderedRemove(cln);
+
+    if (lines.len == 1) {
+        lines.*[cln].shrinkRetainingCapacity(0);
+    } else {
+        _ = tile.lines.orderedRemove(cln);
+        if (cln == lines.len)
+            tile.cursor.ln -= 1;
+    }
 }
 
 pub fn delLnBack(tile: *Tile) !void {
@@ -248,3 +273,42 @@ pub fn delLnFront(tile: *Tile) !void {
     try lines.*[cln].appendSlice(tile.alloc, lines.*[cln + 1].items[(cch)..]);
     _ = tile.lines.orderedRemove(cln + 1);
 }
+
+pub fn heavyCursorLeft(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    var cch = tile.cursor.ch - 1;
+
+    if (cch == 0) return;
+
+    cch -= 1;
+    while (cch > 0
+        and (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
+        or lines.*[cln].items[cch] == '_')) {
+        cch -= 1;
+    }
+    if (tile.cursor.ch - cch > 2)
+        cch += 1;
+
+    tile.cursor.ch = cch + 1;
+    tile.cursor.ideal_ch = tile.cursor.ch;
+}
+
+pub fn heavyCursorRight(tile: *Tile) !void {
+    const lines = &tile.lines.items;
+    const cln = tile.cursor.ln - 1;
+    var cch = tile.cursor.ch - 1;
+
+    if (cch + 1 > lines.*[cln].items.len) return;
+
+    cch += 1;
+    while (cch + 1 < lines.*[cln].items.len
+        and (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
+        or lines.*[cln].items[cch] == '_')) {
+        cch += 1;
+    }
+
+    tile.cursor.ch = cch + 1;
+    tile.cursor.ideal_ch = tile.cursor.ch;
+}
+
