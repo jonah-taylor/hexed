@@ -1,15 +1,12 @@
 const std = @import("std");
-const term = @import("./terminal.zig");
+const term = @import("terminal.zig");
 
-const Axis = @import("./geometry.zig").Axis;
-const Cursor = @import("./cursor.zig").Cursor;
-const Direction = @import("./geometry.zig").Direction;
-const Rectangle = @import("./geometry.zig").Rectangle;
-
-const tile_ops = @import("./tiles/tile.zig");
+const Axis = @import("geometry.zig").Axis;
+const Cursor = @import("cursor.zig").Cursor;
+const Direction = @import("geometry.zig").Direction;
+const Rectangle = @import("geometry.zig").Rectangle;
+const tile_ops = @import("tile.zig");
 const Tile = tile_ops.Tile;
-
-const draw = @import("./tiles/tile.zig").draw;
 
 fn roundToNearest8(x: u16) u16 {
     return (x + 4) / 8 * 8;

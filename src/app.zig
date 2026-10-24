@@ -1,18 +1,13 @@
 const std = @import("std");
-const term = @import("./terminal.zig");
-
-const Cursor = @import("./cursor.zig").Cursor;
-const Direction = @import("./geometry.zig").Direction;
-
-const frame_ops = @import("./frame.zig");
+const term_ops = @import("terminal.zig");
+const Cursor = @import("cursor.zig").Cursor;
+const Direction = @import("geometry.zig").Direction;
+const frame_ops = @import("frame.zig");
 const Frame = frame_ops.Frame;
-
-const Rectangle = @import("./geometry.zig").Rectangle;
-
-const tile_ops = @import("./tiles/tile.zig");
+const Rectangle = @import("geometry.zig").Rectangle;
+const tile_ops = @import("tile.zig");
 const Tile = tile_ops.Tile;
-
-const tiler_ops = @import("./tiler.zig");
+const tiler_ops = @import("tiler.zig");
 const Tiler = tiler_ops.Tiler;
 
 pub const App = struct {
@@ -25,15 +20,19 @@ pub const App = struct {
     };
 
     io: *std.Io,
+    init_termios: std.posix.termios,
+    raw_termios: std.posix.termios,
     alloc: std.mem.Allocator,
     state: State,
     stdout: *std.Io.Writer,
     tiler: Tiler,
     frame: Frame,
 
-    pub fn init(io: *std.Io, stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
+    pub fn init(io: *std.Io, init_termios: std.posix.termios, raw_termios: std.posix.termios, stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
         return .{
             .io = io,
+            .init_termios = init_termios,
+            .raw_termios = raw_termios,
             .alloc = alloc,
             .state = .edit,
             .stdout = stdout,
@@ -61,11 +60,11 @@ pub fn runApp(app: *App) !void {
 
     // END OF STUB
 
-    try term.setCursorBlock(app.stdout);
+    try term_ops.setCursorBlock(app.stdout);
 
-    try term.clear(app.stdout);
-    var term_sz = term.getSize();
-    var prev_term_sz = term.getSize();
+    try term_ops.clear(app.stdout);
+    var term_sz = term_ops.getSize();
+    var prev_term_sz = term_ops.getSize();
     var curr_tile = tiler_ops.getTile(&app.tiler);
 
     try drawTilesOnFrame(app);
@@ -78,17 +77,17 @@ pub fn runApp(app: *App) !void {
         curr_tile = tiler_ops.getTile(&app.tiler);
 
         // window resizing
-        term_sz = term.getSize();
+        term_sz = term_ops.getSize();
         if (prev_term_sz.rows != term_sz.rows or prev_term_sz.cols != term_sz.cols) {
-            try term.clear(app.stdout);
-            app.frame.prev = @splat(@splat(.{ .ch = .{'.', 0, 0, 0} }));
+            try term_ops.clear(app.stdout);
+            app.frame.prev = @splat(@splat(.{ .ch = .{'\t', 0, 0, 0} }));
             prev_term_sz = term_sz;
         }
 
         try drawTilesOnFrame(app);
 
         if (app.state == .resize)
-            try term.colorReset(app.stdout);
+            try term_ops.colorReset(app.stdout);
 
         try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
         app.frame.curr = @splat(@splat(.{ .ch = .{' ', 0, 0, 0} }));
@@ -98,11 +97,11 @@ pub fn runApp(app: *App) !void {
 }
 
 fn drawTilesOnFrame(app: *App) !void {
-    try term.saveCursorPos(app.stdout);
+    try term_ops.saveCursorPos(app.stdout);
     for (0..app.tiler.tiles_len) |i| {
         try tile_ops.drawTileOnFrame(&app.tiler.tiles[i], &app.frame, &app.state);
     }
-    try term.loadCursorPos(app.stdout);
+    try term_ops.loadCursorPos(app.stdout);
 }
 
 fn processKeybinds(app: *App, contents: []u8) !bool {
@@ -110,17 +109,17 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     var key: u8 = '.';
     const name = "build.zig";
     const curr_tile = tiler_ops.getTile(tlr);
-    key = try term.getch();
+    key = try term_ops.getch();
 
     switch (key) {
     '\t' => {
         if (app.state == .edit) {
             app.state = .type;
-            try term.setCursorLine(app.stdout);
+            try term_ops.setCursorLine(app.stdout);
         }
         else {
             app.state = .edit;
-            try term.setCursorBlock(app.stdout);
+            try term_ops.setCursorBlock(app.stdout);
         }
         return true;
     },
@@ -154,7 +153,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
 
     switch (key) {
     'c' => {
-        key = try term.getch();
+        key = try term_ops.getch();
 
         switch (key) {
         'k' => {
@@ -174,7 +173,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
 
     },
     'C' => {
-        key = try term.getch();
+        key = try term_ops.getch();
         switch (key) {
         'k' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.up, false) catch {};
@@ -192,7 +191,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         }
     },
     'd' => {
-        key = try term.getch();
+        key = try term_ops.getch();
         switch (key) {
         'd' => {
             try tile_ops.delLn(curr_tile);
@@ -208,7 +207,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     },
     'D' => {
         tlr.tile_idx = tiler_ops.rmTile(tlr) catch {
-            try term.clear(app.stdout);
+            try term_ops.clear(app.stdout);
             try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
             try app.stdout.flush();
             return false;
@@ -268,11 +267,11 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         try tile_ops.typeNLUp(curr_tile);
     },
     'q' => {
-        key = try term.getch();
+        key = try term_ops.getch();
         switch (key) {
         'q' => {
-            try term.clear(app.stdout);
-            try term.moveCursorTo(app.stdout, 0, 0);
+            try term_ops.clear(app.stdout);
+            try term_ops.moveCursorTo(app.stdout, 0, 0);
             app.stdout.flush() catch {};
             return false;
         },
@@ -290,14 +289,14 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         }
     },
     't' => {
-        key = try term.getch();
+        key = try term_ops.getch();
         switch (key) {
         'h' => tiler_ops.newTile(tlr, Direction.left, contents, name[0..]) catch {},
         'j' => tiler_ops.newTile(tlr, Direction.down, contents, name[0..]) catch {},
         'k' => tiler_ops.newTile(tlr, Direction.up, contents, name[0..]) catch {},
         'l' => tiler_ops.newTile(tlr, Direction.right, contents, name[0..]) catch {},
         's' => {
-            key = try term.getch();
+            key = try term_ops.getch();
             switch (key) {
             'k' => tiler_ops.swapTileInDir(tlr, Direction.up) catch {},
             'j' => tiler_ops.swapTileInDir(tlr, Direction.down) catch {},
@@ -318,21 +317,32 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     '>' => {
         try tile_ops.typeFrontTab(curr_tile);
     },
-    ':' => {
+    'i' => {
         try tile_ops.heavyCursorLeft(curr_tile);
     },
+    'o' => {
+        try tile_ops.heavyCursorRight(curr_tile);
+    },
     'm' => {
-        for (0..10) |_| {
+        for (0..10) |_| { // heavyCursorDown
             try tile_ops.moveCursorDown(curr_tile);
         }
     },
     'M' => {
-        for (0..10) |_| {
+        for (0..10) |_| { // heavyCursorUp
             try tile_ops.moveCursorUp(curr_tile);
         }
     },
-    ';' => {
-        try tile_ops.heavyCursorRight(curr_tile);
+    0x1A => { // ctrl+z
+        try term_ops.exitAltScreen(app.stdout);
+        app.stdout.flush() catch {};
+
+        try term_ops.setTermios(app.init_termios);
+        try std.posix.kill(0, std.posix.SIG.TSTP);
+        try term_ops.setTermios(app.raw_termios);
+
+        try term_ops.enterAltScreen(app.stdout);
+        app.frame.prev = @splat(@splat(.{ .ch = .{'\t', 0, 0, 0} }));
     },
     else => {},
     }

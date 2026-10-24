@@ -1,8 +1,7 @@
 const std = @import("std");
 
 const term_ops = @import("terminal.zig");
-
-const tile_ops = @import("tiles/tile.zig");
+const tile_ops = @import("tile.zig");
 const Tile = tile_ops.Tile;
 
 pub const Cell = struct {

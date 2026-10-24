@@ -55,15 +55,25 @@ pub fn loadCursorPos(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[u", .{});
 }
 
-pub fn setTermios(termios_cfg: std.posix.termios) void {
-    std.posix.tcsetattr(std.posix.STDIN_FILENO, .FLUSH, termios_cfg) catch {};
+pub fn setTermios(termios_cfg: std.posix.termios) !void {
+    try std.posix.tcsetattr(std.posix.STDIN_FILENO, .FLUSH, termios_cfg);
+}
+
+pub fn enterAltScreen(stdout: *std.Io.Writer) !void {
+    try stdout.writeAll("\x1b[?1049h");
+    try stdout.flush();
+}
+
+pub fn exitAltScreen(stdout: *std.Io.Writer) !void {
+    try stdout.writeAll("\x1b[?1049l");
+    try stdout.flush();
 }
 
 pub fn createRawTermiosFrom(termios: std.posix.termios) std.posix.termios {
 
     var raw_termios = termios;
     raw_termios.iflag.ICRNL = false; // don't translate enter into newline
-    raw_termios.iflag.INLCR = false; // don't translate newline into carriage enter
+    raw_termios.iflag.INLCR = false; // don't translate newline into enter
     raw_termios.iflag.IGNCR = false; // don't ignore enter
     raw_termios.lflag.ECHO = false;  // don't echo typed characters to the terminal
     raw_termios.lflag.ICANON = false; // disable canonical mode; read input byte by byte

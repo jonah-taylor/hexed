@@ -1,10 +1,10 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-const App = @import("../app.zig").App;
-const Frame = @import("../frame.zig").Frame;
+const App = @import("app.zig").App;
+const Frame = @import("frame.zig").Frame;
 const Tile = @import("tile.zig").Tile;
-const term_ops = @import("../terminal.zig");
+const term_ops = @import("terminal.zig");
 
 fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i: usize) !bool {
 

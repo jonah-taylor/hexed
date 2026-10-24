@@ -1,15 +1,15 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-const App = @import("../app.zig").App;
-const Cursor = @import("../cursor.zig").Cursor;
-const Frame = @import("../frame.zig").Frame;
-const Rectangle = @import("../geometry.zig").Rectangle;
+const App = @import("app.zig").App;
+const Cursor = @import("cursor.zig").Cursor;
+const Frame = @import("frame.zig").Frame;
+const Rectangle = @import("geometry.zig").Rectangle;
 
-const bufs_tile_ops = @import("bufs_tile.zig");
-const files_tile_ops = @import("files_tile.zig");
-const grep_tile_ops = @import("grep_tile.zig");
-const shell_tile_ops = @import("shell_tile.zig");
+// const bufs_tile_ops = @import("bufs_tile.zig");
+// const files_tile_ops = @import("files_tile.zig");
+// const grep_tile_ops = @import("grep_tile.zig");
+// const shell_tile_ops = @import("shell_tile.zig");
 const text_tile_ops = @import("text_tile.zig");
 
 pub const TileType = enum {
