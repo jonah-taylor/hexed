@@ -8,7 +8,7 @@ const term_ops = @import("terminal.zig");
 
 fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i: usize) !bool {
 
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     var digits: u16 = 0;
     var num = lines.len;
@@ -87,7 +87,7 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
 
 pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void {
 
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     var digits: u16 = 0;
     var num = lines.len;
@@ -109,9 +109,9 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
         const ln_i = tile.cursor.ln - 2 - i;
         y -%= 1;
         if (fixed_x2 > fixed_x1 + num_padding + 1) {
-            y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            y -%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
         } else {
-            y -%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+            y -%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
         }
         if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) break;
     }
@@ -138,17 +138,17 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
         if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) {
             y +%= 1;
             if (fixed_x2 > fixed_x1 + num_padding + 1) {
-                y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+                y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
             } else {
-                y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+                y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
             }
             break;
         }
         y +%= 1;
         if (fixed_x2 > fixed_x1 + num_padding + 1) {
-            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
         } else {
-            y +%= @as(u16, @intCast(tile.lines.items[ln_i].items.len));
+            y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
         }
     }
 
@@ -168,10 +168,10 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
 
     // draw filename
     y = fixed_y2;
-    x = fixed_x2 -% @as(u16, @intCast(tile.name.len));
+    x = fixed_x2 -% @as(u16, @intCast(tile.buf.name.len));
     if (x < fixed_x1 or x > 60000) x = fixed_x1;
 
-    for (tile.name) |ch| {
+    for (tile.buf.name) |ch| {
         if (x >= fixed_x2) break;
         frame.curr[y][x] = .{ .ch = .{ ch, 0, 0, 0 } };
         x += 1;
@@ -180,7 +180,7 @@ pub fn drawContentsOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void 
 
 pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     var digits: u16 = 0;
     var num = lines.len;
@@ -224,7 +224,7 @@ pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 }
 
 pub fn moveCursorUp(tile: *Tile) !void {
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     if (lines.len == 0) return;
 
@@ -242,7 +242,7 @@ pub fn moveCursorUp(tile: *Tile) !void {
 }
 
 pub fn moveCursorDown(tile: *Tile) !void {
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     if (lines.len == 0) return;
 
@@ -268,7 +268,7 @@ pub fn moveCursorLeft(tile: *Tile) !void {
 }
 
 pub fn moveCursorRight(tile: *Tile) !void {
-    const lines: []ArrayList(u8) = tile.lines.items;
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
 
     if (lines.len == 0) return;
 

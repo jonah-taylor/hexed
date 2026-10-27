@@ -21,7 +21,7 @@ pub fn main(init: std.process.Init) !void {
     try term_ops.setTermios(raw_termios);
 
     var io = init.io;
-    var app = App.init(&io, init_termios, raw_termios, stdout, alloc);
+    var app = try App.init(&io, init_termios, raw_termios, stdout, alloc);
 
     try app_ops.runApp(&app);
 }

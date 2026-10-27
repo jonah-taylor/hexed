@@ -2,6 +2,7 @@ const std = @import("std");
 const term = @import("terminal.zig");
 
 const Axis = @import("geometry.zig").Axis;
+const Buffer = @import("buffer.zig").Buffer;
 const Cursor = @import("cursor.zig").Cursor;
 const Direction = @import("geometry.zig").Direction;
 const Rectangle = @import("geometry.zig").Rectangle;
@@ -34,14 +35,14 @@ pub const Tiler = struct {
     tile_idx: usize,
     alloc: std.mem.Allocator,
 
-    pub fn init(alloc: std.mem.Allocator) Self {
+    pub fn init(alloc: std.mem.Allocator, buf: *Buffer) Self {
         var tiler = Self {
             .tiles = undefined,
             .tiles_len = 1,
             .tile_idx = 0,
             .alloc = alloc,
         };
-        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 }, tiler.alloc, &.{}, "empty");
+        tiler.tiles[0] = Tile.init(.{ .x1=0, .y1=0, .x2=256, .y2=256 }, buf);
 
         return tiler;
     }
@@ -60,7 +61,7 @@ pub fn tileIdxFromPoint(tiler: *Tiler, x1: u16, y1: u16) ?usize {
     return null;
 }
 
-pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8, name: []const u8) !void {
+pub fn newTile(tiler: *Tiler, dir: Direction, buf: *Buffer) !void {
     if (tiler.tiles_len >= tiler.tiles.len)
         return;
 
@@ -110,7 +111,7 @@ pub fn newTile(tiler: *Tiler, dir: Direction, buf: []u8, name: []const u8) !void
     },
     }
 
-    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 }, tiler.alloc, buf, name);
+    tiler.tiles[tiler.tiles_len] = Tile.init(.{ .x1=x1, .y1=y1, .x2=x2, .y2=y2 }, buf);
     tiler.tiles_len += 1;
     tiler.tile_idx = tiler.tiles_len - 1;
 

@@ -1,5 +1,8 @@
 const std = @import("std");
+const ArrayList = std.ArrayList;
+
 const term_ops = @import("terminal.zig");
+const Buffer = @import("buffer.zig").Buffer;
 const Cursor = @import("cursor.zig").Cursor;
 const Direction = @import("geometry.zig").Direction;
 const frame_ops = @import("frame.zig");
@@ -19,25 +22,30 @@ pub const App = struct {
         resize,
     };
 
+    alloc: std.mem.Allocator,
+    bufs: ArrayList(Buffer),
+    frame: Frame,
     io: *std.Io,
     init_termios: std.posix.termios,
     raw_termios: std.posix.termios,
-    alloc: std.mem.Allocator,
     state: State,
     stdout: *std.Io.Writer,
     tiler: Tiler,
-    frame: Frame,
 
-    pub fn init(io: *std.Io, init_termios: std.posix.termios, raw_termios: std.posix.termios, stdout: *std.Io.Writer, alloc: std.mem.Allocator) Self {
+    pub fn init(io: *std.Io, init_termios: std.posix.termios, raw_termios: std.posix.termios, stdout: *std.Io.Writer, alloc: std.mem.Allocator) !Self {
+
+        var bufs: ArrayList(Buffer) = .empty;
+        try bufs.append(alloc, Buffer.init(alloc, "empty", &.{}));
         return .{
+            .alloc = alloc,
+            .bufs = bufs,
+            .frame = Frame.init(),
             .io = io,
             .init_termios = init_termios,
             .raw_termios = raw_termios,
-            .alloc = alloc,
             .state = .edit,
             .stdout = stdout,
-            .tiler = Tiler.init(alloc),
-            .frame = Frame.init(),
+            .tiler = Tiler.init(alloc, &bufs.items[0]),
         };
     }
 };
@@ -46,7 +54,8 @@ pub fn runApp(app: *App) !void {
 
     // START OF STUB
 
-    const file = try std.Io.Dir.cwd().openFile(app.io.*, "build.zig", .{});
+    const name = "build.zig";
+    const file = try std.Io.Dir.cwd().openFile(app.io.*, name, .{});
     defer file.close(app.io.*);
 
     const stat = try file.stat(app.io.*);
@@ -57,6 +66,8 @@ pub fn runApp(app: *App) !void {
     var reader = file.reader(app.io.*, &read_buffer);
 
     try reader.interface.readSliceAll(contents);
+
+    try app.bufs.append(app.alloc, Buffer.init(app.alloc, name, contents));
 
     // END OF STUB
 
@@ -72,7 +83,7 @@ pub fn runApp(app: *App) !void {
     app.stdout.flush() catch {};
 
     while (true) {
-        if (!try processKeybinds(app, contents)) break;
+        if (!try processKeybinds(app)) break;
 
         curr_tile = tiler_ops.getTile(&app.tiler);
 
@@ -104,13 +115,12 @@ fn drawTilesOnFrame(app: *App) !void {
     try term_ops.loadCursorPos(app.stdout);
 }
 
-fn processKeybinds(app: *App, contents: []u8) !bool {
+fn processKeybinds(app: *App) !bool {
     var tlr = &app.tiler;
-    var key: u8 = '.';
-    const name = "build.zig";
     const curr_tile = tiler_ops.getTile(tlr);
-    key = try term_ops.getch();
 
+    var key: u8 = undefined;
+    key = try term_ops.getch();
     switch (key) {
     '\t' => {
         if (app.state == .edit) {
@@ -291,10 +301,10 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     't' => {
         key = try term_ops.getch();
         switch (key) {
-        'h' => tiler_ops.newTile(tlr, Direction.left, contents, name[0..]) catch {},
-        'j' => tiler_ops.newTile(tlr, Direction.down, contents, name[0..]) catch {},
-        'k' => tiler_ops.newTile(tlr, Direction.up, contents, name[0..]) catch {},
-        'l' => tiler_ops.newTile(tlr, Direction.right, contents, name[0..]) catch {},
+        'h' => tiler_ops.newTile(tlr, Direction.left, &app.bufs.items[1]) catch {},
+        'j' => tiler_ops.newTile(tlr, Direction.down, &app.bufs.items[1]) catch {},
+        'k' => tiler_ops.newTile(tlr, Direction.up, &app.bufs.items[1]) catch {},
+        'l' => tiler_ops.newTile(tlr, Direction.right, &app.bufs.items[1]) catch {},
         's' => {
             key = try term_ops.getch();
             switch (key) {
@@ -321,11 +331,11 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         try tile_ops.heavyCursorLeft(curr_tile);
     },
     'I' => {
-        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
             try tile_ops.moveCursorLeft(curr_tile);
         }
-        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
-            if (curr_tile.lines.items[curr_tile.cursor.ln - 1].items[curr_tile.cursor.ch - 1] != ' ') {
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            if (curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items[curr_tile.cursor.ch - 1] != ' ') {
                 break;
             }
             try tile_ops.moveCursorRight(curr_tile);
@@ -335,7 +345,7 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         try tile_ops.heavyCursorRight(curr_tile);
     },
     'O' => {
-        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
             try tile_ops.moveCursorRight(curr_tile);
         }
     },
@@ -350,8 +360,8 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
         }
     },
     'x' => {
-        if (curr_tile.cursor.ch - 1 < curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) {
-            _ = curr_tile.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
+        if (curr_tile.cursor.ch - 1 < curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) {
+            _ = curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
         }
     },
     0x1A => { // ctrl+z
