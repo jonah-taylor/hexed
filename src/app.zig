@@ -320,8 +320,24 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     'i' => {
         try tile_ops.heavyCursorLeft(curr_tile);
     },
+    'I' => {
+        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            try tile_ops.moveCursorLeft(curr_tile);
+        }
+        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            if (curr_tile.lines.items[curr_tile.cursor.ln - 1].items[curr_tile.cursor.ch - 1] != ' ') {
+                break;
+            }
+            try tile_ops.moveCursorRight(curr_tile);
+        }
+    },
     'o' => {
         try tile_ops.heavyCursorRight(curr_tile);
+    },
+    'O' => {
+        for (0..curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            try tile_ops.moveCursorRight(curr_tile);
+        }
     },
     'm' => {
         for (0..10) |_| { // heavyCursorDown
@@ -331,6 +347,11 @@ fn processKeybinds(app: *App, contents: []u8) !bool {
     'M' => {
         for (0..10) |_| { // heavyCursorUp
             try tile_ops.moveCursorUp(curr_tile);
+        }
+    },
+    'x' => {
+        if (curr_tile.cursor.ch - 1 < curr_tile.lines.items[curr_tile.cursor.ln - 1].items.len) {
+            _ = curr_tile.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
         }
     },
     0x1A => { // ctrl+z

@@ -281,14 +281,22 @@ pub fn heavyCursorLeft(tile: *Tile) !void {
 
     if (cch == 0) return;
 
-    cch -= 1;
-    while (cch > 0
-        and (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
-        or lines.*[cln].items[cch] == '_')) {
-        cch -= 1;
+    if (std.ascii.isAlphanumeric(lines.*[cln].items[cch - 1])
+        or lines.*[cln].items[cch - 1] == '_') { // go to start of alphnum
+
+        while (cch > 0
+
+            and (std.ascii.isAlphanumeric(lines.*[cln].items[cch - 1])
+                or lines.*[cln].items[cch - 1] == '_')) {
+            cch -= 1;
+        }
+    } else { // go to the first alphnum left of cursor
+        while (cch > 0
+            and !(std.ascii.isAlphanumeric(lines.*[cln].items[cch - 1])
+                or lines.*[cln].items[cch - 1] == '_')) {
+            cch -= 1;
+        }
     }
-    if (tile.cursor.ch - cch > 2)
-        cch += 1;
 
     tile.cursor.ch = cch + 1;
     tile.cursor.ideal_ch = tile.cursor.ch;
@@ -299,13 +307,21 @@ pub fn heavyCursorRight(tile: *Tile) !void {
     const cln = tile.cursor.ln - 1;
     var cch = tile.cursor.ch - 1;
 
-    if (cch + 1 > lines.*[cln].items.len) return;
+    if (lines.len == 0 or cch + 1 > lines.*[cln].items.len) return;
 
-    cch += 1;
-    while (cch + 1 < lines.*[cln].items.len
-        and (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
-        or lines.*[cln].items[cch] == '_')) {
-        cch += 1;
+    if (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
+        or lines.*[cln].items[cch] == '_') { // go to end of alphnum
+        while (cch < lines.*[cln].items.len
+            and (std.ascii.isAlphanumeric(lines.*[cln].items[cch])
+                or lines.*[cln].items[cch] == '_')) {
+            cch += 1;
+        }
+    } else { // go to first alphnum
+        while (cch < lines.*[cln].items.len
+            and !(std.ascii.isAlphanumeric(lines.*[cln].items[cch])
+                or lines.*[cln].items[cch] == '_')) {
+            cch += 1;
+        }
     }
 
     tile.cursor.ch = cch + 1;

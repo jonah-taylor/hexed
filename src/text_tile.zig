@@ -78,7 +78,7 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
 
     if (fixed_x1 + x == fixed_x2) {
         y +%= 1;
-        if (fixed_y1 + y == fixed_y2) return false;
+        if (fixed_y1 +% y == fixed_y2) return false;
         x = num_padding + 1;
     }
 
@@ -224,10 +224,13 @@ pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
 }
 
 pub fn moveCursorUp(tile: *Tile) !void {
+    const lines: []ArrayList(u8) = tile.lines.items;
+
+    if (lines.len == 0) return;
+
     if (tile.cursor.ln > 1)
         tile.cursor.ln -= 1;
 
-    const lines: []ArrayList(u8) = tile.lines.items;
     const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].items.len));
 
     tile.cursor.ch = tile.cursor.ideal_ch;
@@ -240,6 +243,8 @@ pub fn moveCursorUp(tile: *Tile) !void {
 
 pub fn moveCursorDown(tile: *Tile) !void {
     const lines: []ArrayList(u8) = tile.lines.items;
+
+    if (lines.len == 0) return;
 
     if (tile.cursor.ln < lines.len)
         tile.cursor.ln += 1;
@@ -263,8 +268,9 @@ pub fn moveCursorLeft(tile: *Tile) !void {
 }
 
 pub fn moveCursorRight(tile: *Tile) !void {
-
     const lines: []ArrayList(u8) = tile.lines.items;
+
+    if (lines.len == 0) return;
 
     if (tile.cursor.ch < lines[tile.cursor.ln - 1].items.len + 1)
         tile.cursor.ch += 1;
