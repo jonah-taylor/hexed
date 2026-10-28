@@ -237,6 +237,20 @@ fn processKeybinds(app: *App) !bool {
         tlr.tile_idx = tiler_ops.tileIdxFromCursorDir(tlr, Direction.left)
             orelse return true;
     },
+    'i' => {
+        try tile_ops.heavyCursorLeft(curr_tile);
+    },
+    'I' => {
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            try tile_ops.moveCursorLeft(curr_tile);
+        }
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            if (curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items[curr_tile.cursor.ch - 1] != ' ') {
+                break;
+            }
+            try tile_ops.moveCursorRight(curr_tile);
+        }
+    },
     'j' => {
         try switch (app.state) {
         .edit => tile_ops.moveCursorDown(curr_tile),
@@ -276,6 +290,24 @@ fn processKeybinds(app: *App) !bool {
     'N' => {
         try tile_ops.typeNLUp(curr_tile);
     },
+    'm' => {
+        for (0..10) |_| { // heavyCursorDown
+            try tile_ops.moveCursorDown(curr_tile);
+        }
+    },
+    'M' => {
+        for (0..10) |_| { // heavyCursorUp
+            try tile_ops.moveCursorUp(curr_tile);
+        }
+    },
+    'o' => {
+        try tile_ops.heavyCursorRight(curr_tile);
+    },
+    'O' => {
+        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
+            try tile_ops.moveCursorRight(curr_tile);
+        }
+    },
     'q' => {
         key = try term_ops.getch();
         switch (key) {
@@ -298,6 +330,16 @@ fn processKeybinds(app: *App) !bool {
             app.state = .resize;
         }
     },
+    'S' => {
+        key = try term_ops.getch();
+        switch (key) {
+        'k' => tiler_ops.swapTileInDir(tlr, Direction.up) catch {},
+        'j' => tiler_ops.swapTileInDir(tlr, Direction.down) catch {},
+        'h' => tiler_ops.swapTileInDir(tlr, Direction.left) catch {},
+        'l' => tiler_ops.swapTileInDir(tlr, Direction.right) catch {},
+        else => {},
+        }
+    },
     't' => {
         key = try term_ops.getch();
         switch (key) {
@@ -305,64 +347,22 @@ fn processKeybinds(app: *App) !bool {
         'j' => tiler_ops.newTile(tlr, Direction.down, &app.bufs.items[1]) catch {},
         'k' => tiler_ops.newTile(tlr, Direction.up, &app.bufs.items[1]) catch {},
         'l' => tiler_ops.newTile(tlr, Direction.right, &app.bufs.items[1]) catch {},
-        's' => {
-            key = try term_ops.getch();
-            switch (key) {
-            'k' => tiler_ops.swapTileInDir(tlr, Direction.up) catch {},
-            'j' => tiler_ops.swapTileInDir(tlr, Direction.down) catch {},
-            'h' => tiler_ops.swapTileInDir(tlr, Direction.left) catch {},
-            'l' => tiler_ops.swapTileInDir(tlr, Direction.right) catch {},
-            else => {},
-            }
-        },
         else => {},
         }
     },
     // 'u' => {
     // undo
     // },
+    'x' => {
+        if (curr_tile.cursor.ch - 1 < curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) {
+            _ = curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
+        }
+    },
     '<' => {
         try tile_ops.typeFrontDeTab(curr_tile);
     },
     '>' => {
         try tile_ops.typeFrontTab(curr_tile);
-    },
-    'i' => {
-        try tile_ops.heavyCursorLeft(curr_tile);
-    },
-    'I' => {
-        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
-            try tile_ops.moveCursorLeft(curr_tile);
-        }
-        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
-            if (curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items[curr_tile.cursor.ch - 1] != ' ') {
-                break;
-            }
-            try tile_ops.moveCursorRight(curr_tile);
-        }
-    },
-    'o' => {
-        try tile_ops.heavyCursorRight(curr_tile);
-    },
-    'O' => {
-        for (0..curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) |_| {
-            try tile_ops.moveCursorRight(curr_tile);
-        }
-    },
-    'm' => {
-        for (0..10) |_| { // heavyCursorDown
-            try tile_ops.moveCursorDown(curr_tile);
-        }
-    },
-    'M' => {
-        for (0..10) |_| { // heavyCursorUp
-            try tile_ops.moveCursorUp(curr_tile);
-        }
-    },
-    'x' => {
-        if (curr_tile.cursor.ch - 1 < curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) {
-            _ = curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
-        }
     },
     0x1A => { // ctrl+z
         try term_ops.exitAltScreen(app.stdout);

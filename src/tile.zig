@@ -109,15 +109,23 @@ pub fn typeBackspace(tile: *Tile) !void {
     const cln = tile.cursor.ln - 1;
     const cch = tile.cursor.ch - 1;
 
-    if (tile.cursor.ch == 1) {
+    if (cch == 0) {
         if (cln == 0) return;
         tile.cursor.ln -= 1;
         tile.cursor.ch = @as(u16, @intCast(lines.*[cln - 1].items.len + 1));
         try lines.*[cln - 1].appendSlice(tile.buf.alloc, lines.*[cln].items[0..]);
         _ = tile.buf.lines.orderedRemove(cln);
     } else {
-        _ = tile.buf.lines.items[cln].orderedRemove(cch - 1);
-        tile.cursor.ch -= 1;
+        if (cch > 3 and std.mem.eql(u8, lines.*[cln].items[cch-4..cch], "    ")) { // delete tab
+            for (0..4) |i| {
+                _ = tile.buf.lines.items[cln].orderedRemove(cch - 1 - i);
+                tile.cursor.ch -= 1;
+                if ((cch - 1 - i) % 4 == 0) break;
+            }
+        } else {
+            _ = tile.buf.lines.items[cln].orderedRemove(cch - 1);
+            tile.cursor.ch -= 1;
+        }
     }
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
@@ -226,6 +234,9 @@ pub fn delLn(tile: *Tile) !void {
         _ = tile.buf.lines.orderedRemove(cln);
         if (cln == lines.len)
             tile.cursor.ln -= 1;
+        if (tile.cursor.ch > lines.*[tile.cursor.ln - 1].items.len) {
+            tile.cursor.ch = @as(u16, @intCast(lines.*[tile.cursor.ln - 1].items.len + 1));
+        }
     }
 }
 

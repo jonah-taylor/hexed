@@ -53,26 +53,23 @@ fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i
     // draw line contents
     x = num_padding + 1;
 
-    for (lines[ln_i].items) |ch| {
+    for (lines[ln_i].items, 0..lines[ln_i].items.len) |ch, i| {
         if (fixed_x1 + x >= fixed_x2) {
             y +%= 1;
             if (fixed_y1 +% y == fixed_y2) return false;
             x = num_padding + 1;
         }
 
-        switch (ch) {
+        if (y >= 0 and y <= fixed_y2 - fixed_y1) switch (ch) {
         ' ' => {
-            if (y >= 0 and y <= fixed_y2 - fixed_y1)
-                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8){ 0xC2, 0xB7 };
+            if (i + 3 < lines[ln_i].items.len and i % 4 == 0 and std.mem.eql(u8, lines[ln_i].items[i..(i + 4)], "    ")) {
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ 0xE2, 0x94, 0x82, 0 }, .len = 3, .fg = 90 };
+            } else {
                 frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ 0xC2, 0xB7, 0, 0 }, .len = 2, .fg = 90 };
+            }
         },
-        else => {
-            if (y >= 0 and y <= fixed_y2 - fixed_y1)
-                // try term_ops.placeStrAt(stdout, fixed_y1 + y, fixed_x1 + x, &[_]u8{ch});
-                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } };
-
-        },
-        }
+        else => frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } },
+        };
         x += 1;
     }
 

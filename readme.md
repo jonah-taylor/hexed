@@ -4,6 +4,8 @@ TODO:
 
 BUG FIXES
 
+delete ln caused an issue at one point
+
 COMMANDS
 
 w to save the file with space indenting
