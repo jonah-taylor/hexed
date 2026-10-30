@@ -2,39 +2,51 @@ HEXED (Horribly EXcruciating EDitor)
 
 TODO:
 
-BUG FIXES
-
-delete ln caused an issue at one point
+BUGS
 
 COMMANDS
 
-w to save the file with space indenting
+f followed by character to jump to on the screen. Each frame replaces the following char with a unique symbol for jumping to that char
 
-wtq to save the file with tab indenting
+p for put
+
+r to redo
+
+s for vim-like 'r' action
+
+u to undo
+
+v to highlight similar to vim
+
+y for yank
 
 wq to save and quit with spaces
+
+wt to save the file with tab indenting
+
+ww to save the file with space indenting
 
 / to search for a string and , for backwards and . for forwards
 
 ; to repeat the last command
 
+] opens up a directory tree navigated by typing directory and filenames and creates a buffer copy for the current tile
+
+[ opens up a list of existing buffers to attach to the current tile
+
 FEATURES
 
 \t to 4 spaces on buffer creation
 
-Highlight mode
+Writing a buffer to a file
 
-Copy&paste
+A unique word scrambler for fast jump, file tree, and buffer navigation
 
 Number for repeating action
 
-Macros
+Action History for macros and repeating actions
 
-Undo&redo
+Buffers need their own history for undo and redo
 
-FileTile for file selection on startup where you type file name to search
-
-BufTile for buffer selection by entering a number
-
-Running the program with filenames as arguments
+Running the program with filename args for buffer setup
 

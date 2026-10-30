@@ -1,12 +1,12 @@
 const std = @import("std");
+const ArrayList = std.ArrayList;
 
 const App = @import("app.zig").App;
 const Buffer = @import("buffer.zig").Buffer;
 const Cursor = @import("cursor.zig").Cursor;
 const Frame = @import("frame.zig").Frame;
 const Rectangle = @import("geometry.zig").Rectangle;
-
-const text_tile_ops = @import("text_tile.zig");
+const term_ops = @import("terminal.zig");
 
 pub const TileType = enum {
     buffers,
@@ -38,70 +38,277 @@ pub fn hasCoord(tile: *Tile, x: u16, y: u16) bool {
     return x >= tile.rect.x1 and x <= tile.rect.x2 and y >= tile.rect.y1 and y <= tile.rect.y2;
 }
 
+fn drawLineOnFrame(tile: *Tile, frame: *Frame, state: *App.State, y_c: u16, ln_i: usize) !bool {
+
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
+    }
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
+    const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
+
+    num = @abs(@as(i32, @intCast(ln_i)) - @as(i32, @intCast(tile.cursor.ln - 1)));
+
+    var y: u16 = y_c;
+    var x: u16 = num_padding;
+
+    // handle cursor line number
+    if (num == 0) {
+        num = @as(u16, @intCast(ln_i)) + 1;
+        digits = 0;
+        while (num > 0) : (num /= 10) {
+            digits += 1;
+        }
+        x = digits;
+        num = @as(u16, @intCast(ln_i)) + 1;
+    }
+
+    if (y >= 0 and y <= fixed_y2 - fixed_y1) {
+        // handle other line numbers
+        while (num > 0) : (num /= 10) {
+            x -= 1;
+            const ch: u8 = '0' + @as(u8, @intCast(num % 10));
+
+            frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } };
+            if (state.* == .resize)
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x].fg = 31;
+        }
+    }
+
+    // draw line contents
+    x = num_padding + 1;
+
+    for (lines[ln_i].items, 0..lines[ln_i].items.len) |ch, i| {
+        if (fixed_x1 + x >= fixed_x2) {
+            y +%= 1;
+            if (fixed_y1 +% y == fixed_y2) return false;
+            x = num_padding + 1;
+        }
+
+        if (y >= 0 and y <= fixed_y2 - fixed_y1) switch (ch) {
+        ' ' => {
+            if (i + 3 < lines[ln_i].items.len and i % 4 == 0 and std.mem.eql(u8, lines[ln_i].items[i..(i + 4)], "    ")) {
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ 0xE2, 0x94, 0x82, 0 }, .len = 3, .fg = 90 };
+            } else {
+                frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ 0xC2, 0xB7, 0, 0 }, .len = 2, .fg = 90 };
+            }
+        },
+        else => frame.curr[@as(usize, fixed_y1) + y][@as(usize, fixed_x1) + x] = .{ .ch = .{ ch, 0, 0, 0 } },
+        };
+        x += 1;
+    }
+
+    if (fixed_x1 + x == fixed_x2) {
+        y +%= 1;
+        if (fixed_y1 +% y == fixed_y2) return false;
+        x = num_padding + 1;
+    }
+
+    return true;
+}
+
 pub fn drawTileOnFrame(tile: *Tile, frame: *Frame, state: *App.State) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.drawContents(tile, stdout, state),
-    // .files => try files_tile_ops.drawContents(tile, stdout, state),
-    // .grep => try grep_tile_ops.drawContents(tile, frame, state),
-    // .shell => try shell_tile_ops.drawContents(tile, frame, state),
-    // .text => 
-    // }
-    try text_tile_ops.drawContentsOnFrame(tile, frame, state);
+
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    // ROUND CURSOR TO A VALID LOCATION
+    if (tile.cursor.ln > lines.len) tile.cursor.ln = @as(u16, @intCast(lines.len));
+    const cll = lines[tile.cursor.ln - 1].items.len;
+    if (tile.cursor.ch > cll) tile.cursor.ch = @as(u16, @intCast(cll + 1));
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
+    }
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
+    const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
+
+    var x: u16 = 0;
+    var y: u16 = (fixed_y2 - fixed_y1) / 2;
+
+    // draw lines above the type-line
+    for (0..(tile.cursor.ln - 1)) |i| {
+        const ln_i = tile.cursor.ln - 2 - i;
+        y -%= 1;
+        if (fixed_x2 > fixed_x1 + num_padding + 1) {
+            y -%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        } else {
+            y -%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
+        }
+        if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) break;
+    }
+
+    if (y > (fixed_y2 - fixed_y1))
+        y = 0;
+
+    // draw padding lines after eof
+    for (0..y) |i| {
+        // draw ~
+        x = num_padding + 1;
+        const ch: u8 = '~';
+        frame.curr[@as(usize, fixed_y1) + i][@as(usize, fixed_x1)] = .{ .ch = .{ ch, 0, 0, 0 }, .fg = 90, };
+    }
+
+    y = (fixed_y2 - fixed_y1) / 2;
+
+    // draw type-line and lower
+    for ((tile.cursor.ln - 1)..lines.len) |ln_i| {
+        if (fixed_y1 + y == fixed_y2) break;
+        if (!try drawLineOnFrame(tile, frame, state, y, ln_i)) {
+            y +%= 1;
+            if (fixed_x2 > fixed_x1 + num_padding + 1) {
+                y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+            } else {
+                y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
+            }
+            break;
+        }
+        y +%= 1;
+        if (fixed_x2 > fixed_x1 + num_padding + 1) {
+            y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len / (fixed_x2 - fixed_x1 - num_padding - 1)));
+        } else {
+            y +%= @as(u16, @intCast(tile.buf.lines.items[ln_i].items.len));
+        }
+    }
+
+    if (y > (fixed_y2 - fixed_y1))
+        y = (fixed_y2 - fixed_y1);
+
+    // draw padding lines after eof
+    for (0..(fixed_y2 - (fixed_y1 + y))) |i| {
+        // draw ~
+        x = num_padding + 1;
+        const ch: u8 = '~';
+        frame.curr[@as(usize, fixed_y1 + y) + i][@as(usize, fixed_x1)] = .{ .ch = .{ ch, 0, 0, 0 }, .fg = 90 };
+    }
+
+    // draw filename
+    y = fixed_y2;
+    x = fixed_x2 -% @as(u16, @intCast(tile.buf.name.len));
+    if (x < fixed_x1 or x > 60000) x = fixed_x1;
+
+    for (tile.buf.name) |ch| {
+        if (x >= fixed_x2) break;
+        frame.curr[y][x] = .{ .ch = .{ ch, 0, 0, 0 } };
+        x += 1;
+    }
 }
 
 pub fn updateCursor(tile: *Tile, stdout: *std.Io.Writer) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.updateCursor(tile, stdout),
-    // .files => try files_tile_ops.updateCursor(tile, stdout),
-    // .grep => try grep_tile_ops.updateCursor(tile, stdout),
-    // .shell => try shell_tile_ops.updateCursor(tile, stdout),
-    // .text => 
-    // }
-    try text_tile_ops.updateCursor(tile, stdout);
+
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    // ROUND CURSOR TO A VALID LOCATION
+    if (tile.cursor.ln > lines.len) tile.cursor.ln = @as(u16, @intCast(lines.len));
+    const cll = lines[tile.cursor.ln - 1].items.len;
+    if (tile.cursor.ch > cll) tile.cursor.ch = @as(u16, @intCast(cll + 1));
+
+    var digits: u16 = 0;
+    var num = lines.len;
+    while (num > 0) : (num /= 10) {
+        digits += 1;
+    }
+    const num_padding: u16 = digits;
+
+    const fixed_x1 = term_ops.fixedFromPercX(tile.rect.x1);
+    const fixed_y1 = term_ops.fixedFromPercY(tile.rect.y1);
+    const fixed_x2 = term_ops.fixedFromPercX(tile.rect.x2) - 2;
+    const fixed_y2 = term_ops.fixedFromPercY(tile.rect.y2) - 1;
+
+    const ln_i = tile.cursor.ln - 1;
+
+    var x: u16 = 0;
+    var y: u16 = (fixed_y2 - fixed_y1) / 2;
+
+    num = @as(u16, @intCast(ln_i)) + 1;
+
+    x = num_padding + 1;
+
+    // iterate over contents for internal newlines
+    if (lines.len > 0) {
+        for (0..lines[ln_i].items.len + 1) |i| {
+            if (fixed_x1 + x >= fixed_x2) {
+                y +%= 1;
+                if (fixed_y1 + y == fixed_y2) return;
+                x = num_padding + 1;
+            }
+            if (i == tile.cursor.ch - 1) break;
+
+            x += 1;
+        }
+    }
+
+    tile.cursor.x = x;
+    tile.cursor.y = y;
+
+    try term_ops.moveCursorTo(stdout, fixed_y1 + y, fixed_x1 + x);
 }
 
 pub fn moveCursorUp(tile: *Tile) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.moveCursorUp(tile),
-    // .files => try files_tile_ops.moveCursorUp(tile),
-    // .grep => try grep_tile_ops.moveCursorUp(tile),
-    // .shell => try shell_tile_ops.moveCursorUp(tile),
-    // .text => 
-    // }
-    try text_tile_ops.moveCursorUp(tile);
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    if (lines.len == 0) return;
+
+    if (tile.cursor.ln > 1)
+        tile.cursor.ln -= 1;
+
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].items.len));
+
+    tile.cursor.ch = tile.cursor.ideal_ch;
+
+    if (tile.cursor.ch > new_ln_len)
+        tile.cursor.ch = new_ln_len + 1;
+    if (tile.cursor.ch == 0) // if there are no chars on a line
+        tile.cursor.ch = 1;
 }
 
 pub fn moveCursorLeft(tile: *Tile) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.moveCursorLeft(tile),
-    // .files => try files_tile_ops.moveCursorLeft(tile),
-    // .grep => try grep_tile_ops.moveCursorLeft(tile),
-    // .shell => try shell_tile_ops.moveCursorLeft(tile),
-    // .text => try 
-    // }
-    try text_tile_ops.moveCursorLeft(tile);
+
+    if (tile.cursor.ch > 1)
+        tile.cursor.ch -= 1;
+
+    tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
 pub fn moveCursorRight(tile: *Tile) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.moveCursorRight(tile),
-    // .files => try files_tile_ops.moveCursorRight(tile),
-    // .grep => try grep_tile_ops.moveCursorRight(tile),
-    // .shell => try shell_tile_ops.moveCursorRight(tile),
-    // .text => try 
-    // }
-    try text_tile_ops.moveCursorRight(tile);
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    if (lines.len == 0) return;
+
+    if (tile.cursor.ch < lines[tile.cursor.ln - 1].items.len + 1)
+        tile.cursor.ch += 1;
+
+    tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
 pub fn moveCursorDown(tile: *Tile) !void {
-    // switch (tile.type) {
-    // .buffers => try bufs_tile_ops.moveCursorDown(tile),
-    // .files => try files_tile_ops.moveCursorDown(tile),
-    // .grep => try grep_tile_ops.moveCursorDown(tile),
-    // .shell => try shell_tile_ops.moveCursorDown(tile),
-    // .text => 
-    // }
-    try text_tile_ops.moveCursorDown(tile);
+    const lines: []ArrayList(u8) = tile.buf.lines.items;
+
+    if (lines.len == 0) return;
+
+    if (tile.cursor.ln < lines.len)
+        tile.cursor.ln += 1;
+
+    const new_ln_len: u16 = @as(u16, @intCast(lines[tile.cursor.ln - 1].items.len));
+
+    tile.cursor.ch = tile.cursor.ideal_ch;
+
+    if (tile.cursor.ch > new_ln_len)
+        tile.cursor.ch = new_ln_len + 1;
+    if (tile.cursor.ch == 0) // if there are no chars on a line
+        tile.cursor.ch = 1;
 }
 
 pub fn typeBackspace(tile: *Tile) !void {
@@ -224,20 +431,28 @@ pub fn typeChar(tile: *Tile, ch: u8) !void {
     tile.cursor.ideal_ch = tile.cursor.ch;
 }
 
-pub fn delLn(tile: *Tile) !void {
+pub fn delLn(tile: *Tile, ln: u16) !void {
     const lines = &tile.buf.lines.items;
-    const cln = tile.cursor.ln - 1;
+
+    if (ln == 0 or ln > lines.len) return;
+
+    var cln = ln - 1;
+    var cch = tile.cursor.ch - 1;
 
     if (lines.len == 1) {
         lines.*[cln].shrinkRetainingCapacity(0);
     } else {
         _ = tile.buf.lines.orderedRemove(cln);
-        if (cln == lines.len)
-            tile.cursor.ln -= 1;
-        if (tile.cursor.ch > lines.*[tile.cursor.ln - 1].items.len) {
-            tile.cursor.ch = @as(u16, @intCast(lines.*[tile.cursor.ln - 1].items.len + 1));
+        if (cln == lines.len or cln >= tile.cursor.ln) {
+            cln -= 1;
+        }
+        if (cch > lines.*[cln].items.len) {
+            cch = @as(u16, @intCast(lines.*[cln].items.len));
         }
     }
+
+    tile.cursor.ln = cln + 1;
+    tile.cursor.ch = cch + 1;
 }
 
 pub fn delLnBack(tile: *Tile) !void {

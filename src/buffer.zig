@@ -8,11 +8,12 @@ pub const Buffer = struct {
     name: []const u8,
     lines: ArrayList(ArrayList(u8)),
 
-    pub fn init(alloc: std.mem.Allocator, name: []const u8, contents: []u8) Self {
+    pub fn init(alloc: std.mem.Allocator, name: []const u8, contents: []const u8) Self {
         var lines: ArrayList(ArrayList(u8)) = .empty;
         var idx: usize = 0;
         var start: usize = 0;
         var end: usize = 0;
+
         while (end < contents.len) : (idx += 1) {
             lines.append(alloc, .empty) catch {};
             while (contents[end] != '\n') : (end += 1) {}

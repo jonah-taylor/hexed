@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const term_ops = @import("terminal.zig");
-const tile_ops = @import("tile.zig");
-const Tile = tile_ops.Tile;
 
 pub const Cell = struct {
     ch: [4]u8 = .{' ', 0, 0, 0},
@@ -25,7 +23,7 @@ pub const Frame = struct {
     }
 };
 
-pub fn drawFrame(frame: *Frame, stdout: *std.Io.Writer, rows: usize, cols: usize) !void {
+pub fn drawFrameOnTerm(frame: *Frame, stdout: *std.Io.Writer, rows: usize, cols: usize) !void {
     try term_ops.hideCursor(stdout);
     for (0..rows) |row| {
         for (0..cols) |col| {
@@ -44,3 +42,4 @@ pub fn drawFrame(frame: *Frame, stdout: *std.Io.Writer, rows: usize, cols: usize
     frame.prev = frame.curr;
     try term_ops.showCursor(stdout);
 }
+

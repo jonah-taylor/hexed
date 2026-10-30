@@ -35,7 +35,7 @@ pub const App = struct {
     pub fn init(io: *std.Io, init_termios: std.posix.termios, raw_termios: std.posix.termios, stdout: *std.Io.Writer, alloc: std.mem.Allocator) !Self {
 
         var bufs: ArrayList(Buffer) = .empty;
-        try bufs.append(alloc, Buffer.init(alloc, "empty", &.{}));
+        try bufs.append(alloc, Buffer.init(alloc, "empty", "\n"));
         return .{
             .alloc = alloc,
             .bufs = bufs,
@@ -50,26 +50,27 @@ pub const App = struct {
     }
 };
 
-pub fn runApp(app: *App) !void {
-
-    // START OF STUB
-
-    const name = "build.zig";
+pub fn getFileContent(app: *App, name: []const u8) ![]u8 {
     const file = try std.Io.Dir.cwd().openFile(app.io.*, name, .{});
     defer file.close(app.io.*);
 
     const stat = try file.stat(app.io.*);
-    const contents = try app.alloc.alloc(u8, stat.size);
-    defer app.alloc.free(contents);
+    const contents: []u8 = try app.alloc.alloc(u8, stat.size);
 
     var read_buffer: [4096]u8 = undefined;
     var reader = file.reader(app.io.*, &read_buffer);
 
     try reader.interface.readSliceAll(contents);
 
-    try app.bufs.append(app.alloc, Buffer.init(app.alloc, name, contents));
+    return contents;
+}
 
-    // END OF STUB
+pub fn runApp(app: *App) !void {
+
+    const name = "build.zig";
+    const contents = try getFileContent(app, name);
+    defer app.alloc.free(contents);
+    try app.bufs.append(app.alloc, Buffer.init(app.alloc, name, contents));
 
     try term_ops.setCursorBlock(app.stdout);
 
@@ -79,11 +80,13 @@ pub fn runApp(app: *App) !void {
     var curr_tile = tiler_ops.getTile(&app.tiler);
 
     try drawTilesOnFrame(app);
-    try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
+    try frame_ops.drawFrameOnTerm(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
     app.stdout.flush() catch {};
 
+    var key_pressed: u8 = undefined;
     while (true) {
-        if (!try processKeybinds(app)) break;
+        key_pressed = try term_ops.getch();
+        if (!try processKey(app, key_pressed)) break;
 
         curr_tile = tiler_ops.getTile(&app.tiler);
 
@@ -91,7 +94,7 @@ pub fn runApp(app: *App) !void {
         term_sz = term_ops.getSize();
         if (prev_term_sz.rows != term_sz.rows or prev_term_sz.cols != term_sz.cols) {
             try term_ops.clear(app.stdout);
-            app.frame.prev = @splat(@splat(.{ .ch = .{'\t', 0, 0, 0} }));
+            app.frame.prev = @splat(@splat(.{ .ch = .{' ', 0, 0, 0} }));
             prev_term_sz = term_sz;
         }
 
@@ -100,7 +103,7 @@ pub fn runApp(app: *App) !void {
         if (app.state == .resize)
             try term_ops.colorReset(app.stdout);
 
-        try frame_ops.drawFrame(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
+        try frame_ops.drawFrameOnTerm(&app.frame, app.stdout, term_sz.rows, term_sz.cols);
         app.frame.curr = @splat(@splat(.{ .ch = .{' ', 0, 0, 0} }));
         try tile_ops.updateCursor(tiler_ops.getTile(&app.tiler), app.stdout);
         app.stdout.flush() catch {};
@@ -115,12 +118,10 @@ fn drawTilesOnFrame(app: *App) !void {
     try term_ops.loadCursorPos(app.stdout);
 }
 
-fn processKeybinds(app: *App) !bool {
+fn processKey(app: *App, key_pressed: u8) !bool {
+    var key = key_pressed;
     var tlr = &app.tiler;
     const curr_tile = tiler_ops.getTile(tlr);
-
-    var key: u8 = undefined;
-    key = try term_ops.getch();
     switch (key) {
     '\t' => {
         if (app.state == .edit) {
@@ -178,7 +179,9 @@ fn processKeybinds(app: *App) !bool {
         'l' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.right, true) catch {};
         },
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
 
     },
@@ -197,22 +200,32 @@ fn processKeybinds(app: *App) !bool {
         'l' => {
             _ = tiler_ops.rotateInDir(tlr, Direction.right, false) catch {};
         },
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
     },
     'd' => {
         key = try term_ops.getch();
         switch (key) {
         'd' => {
-            try tile_ops.delLn(curr_tile);
+            try tile_ops.delLn(curr_tile, curr_tile.cursor.ln);
         },
-        'f' => {
+        'k' => {
+            try tile_ops.delLn(curr_tile, curr_tile.cursor.ln - 1);
+        },
+        'j' => {
+            try tile_ops.delLn(curr_tile, curr_tile.cursor.ln + 1);
+        },
+        'h' => {
             try tile_ops.delLnFront(curr_tile);
         },
-        'b' => {
+        'l' => {
             try tile_ops.delLnBack(curr_tile);
         },
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
     },
     'D' => {
@@ -230,7 +243,9 @@ fn processKeybinds(app: *App) !bool {
         try switch (app.state) {
         .edit => tile_ops.moveCursorLeft(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.left, tlr.tile_idx, true),
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         };
     },
     'H' => {
@@ -255,7 +270,9 @@ fn processKeybinds(app: *App) !bool {
         try switch (app.state) {
         .edit => tile_ops.moveCursorDown(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.down, tlr.tile_idx, true),
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         };
     },
     'J' => {
@@ -266,7 +283,9 @@ fn processKeybinds(app: *App) !bool {
         try switch (app.state) {
         .edit => tile_ops.moveCursorUp(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.up, tlr.tile_idx, true),
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         };
     },
     'K' => {
@@ -277,7 +296,9 @@ fn processKeybinds(app: *App) !bool {
         try switch (app.state) {
         .edit => tile_ops.moveCursorRight(curr_tile),
         .resize => tiler_ops.resizeTile(tlr, Direction.right, tlr.tile_idx, true),
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         };
     },
     'L' => {
@@ -317,7 +338,9 @@ fn processKeybinds(app: *App) !bool {
             app.stdout.flush() catch {};
             return false;
         },
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
     },
     // 'r' => {
@@ -337,7 +360,9 @@ fn processKeybinds(app: *App) !bool {
         'j' => tiler_ops.swapTileInDir(tlr, Direction.down) catch {},
         'h' => tiler_ops.swapTileInDir(tlr, Direction.left) catch {},
         'l' => tiler_ops.swapTileInDir(tlr, Direction.right) catch {},
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
     },
     't' => {
@@ -347,7 +372,9 @@ fn processKeybinds(app: *App) !bool {
         'j' => tiler_ops.newTile(tlr, Direction.down, &app.bufs.items[1]) catch {},
         'k' => tiler_ops.newTile(tlr, Direction.up, &app.bufs.items[1]) catch {},
         'l' => tiler_ops.newTile(tlr, Direction.right, &app.bufs.items[1]) catch {},
-        else => {},
+        else => {
+            return try processKey(app, key);
+        },
         }
     },
     // 'u' => {

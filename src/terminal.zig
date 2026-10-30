@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const App = @import("app.zig").App;
-
 pub fn clear(stdout: *std.Io.Writer) !void {
     try stdout.print("\x1b[2J", .{});
 }
