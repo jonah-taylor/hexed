@@ -18,7 +18,14 @@ pub const Buffer = struct {
             lines.append(alloc, .empty) catch {};
             while (contents[end] != '\n') : (end += 1) {}
             for (contents[start..end]) |ch| {
-                lines.items[idx].append(alloc, ch) catch {};
+                if (ch == '\t') {
+                    lines.items[idx].append(alloc, ' ') catch {};
+                    while (lines.items[idx].items.len % 4 != 0) {
+                        lines.items[idx].append(alloc, ' ') catch {};
+                    }
+                } else {
+                    lines.items[idx].append(alloc, ch) catch {};
+                }
             }
             start = end + 1;
             end += 1;

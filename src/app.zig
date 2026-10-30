@@ -67,7 +67,7 @@ pub fn getFileContent(app: *App, name: []const u8) ![]u8 {
 
 pub fn runApp(app: *App) !void {
 
-    const name = "build.zig";
+    const name = "Makefile";
     const contents = try getFileContent(app, name);
     defer app.alloc.free(contents);
     try app.bufs.append(app.alloc, Buffer.init(app.alloc, name, contents));

@@ -22,4 +22,3 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the program");
     run_step.dependOn(&run_cmd.step);
 }
-
