@@ -6,13 +6,13 @@ BUGS
 
 COMMANDS
 
+c is the same as d except it cuts the text instead of deleting it
+
 f followed by character to jump to on the screen. Each frame replaces the following char with a unique symbol for jumping to that char
 
 p for put
 
 r to redo
-
-s for vim-like 'r' action
 
 u to undo
 

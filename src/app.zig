@@ -343,15 +343,26 @@ fn processKey(app: *App, key_pressed: u8) !bool {
         },
         }
     },
-    // 'r' => {
-    // redo
-    // },
     'R' => {
         if (app.state == .resize) {
             app.state = .edit;
         } else {
             app.state = .resize;
         }
+    },
+    's' => {
+        key = try term_ops.getch();
+        const init_ch = curr_tile.cursor.ch;
+        if (curr_tile.cursor.ch - 1 < curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].items.len) {
+            _ = curr_tile.buf.lines.items[curr_tile.cursor.ln - 1].orderedRemove(curr_tile.cursor.ch - 1);
+        }
+
+        app.state = .type;
+        _ = try processKey(app, key);
+        app.state = .edit;
+
+        curr_tile.cursor.ch = init_ch;
+
     },
     'S' => {
         key = try term_ops.getch();
