@@ -7,40 +7,84 @@
 #include "tiler.h"
 #include "geometry.h"
 
+typedef enum {
+    RESIZING,
+    TYPING,
+    EDITING,
+} Mode;
+
 int
-handleKey(Tiler* tiler, char ch)
+handleKey(char key, Mode *mode, Tiler* tiler)
 {
-    switch(ch) {
+    switch(key) {
+
     case 'D':
-        rmTile(tiler);
+        rmSel(tiler);
         break;
+
     case 'h':
+        if (*mode == RESIZING) {
+            reszSel(tiler, LEFT, true);
+            break;
+        }
         getSel(tiler)->cursor.x--;
         break;
+
     case 'H':
         selTileInCursorDir(tiler, LEFT);
         break;
+
     case 'j':
+        if (*mode == RESIZING) {
+            reszSel(tiler, DOWN, true);
+            break;
+        }
         getSel(tiler)->cursor.y++;
         break;
+
     case 'J':
         selTileInCursorDir(tiler, DOWN);
         break;
+
     case 'k':
+        if (*mode == RESIZING) {
+            reszSel(tiler, UP, true);
+            break;
+        }
         getSel(tiler)->cursor.y--;
         break;
+
     case 'K':
         selTileInCursorDir(tiler, UP);
         break;
+
     case 'l':
+        if (*mode == RESIZING) {
+            reszSel(tiler, RIGHT, true);
+            break;
+        }
         getSel(tiler)->cursor.x++;
         break;
+
     case 'L':
         selTileInCursorDir(tiler, RIGHT);
         break;
+
+    case 'q':
+        key = getch();
+        switch (key) {
+        case 'q':
+            return 1;
+        }
+        break;
+
+    case 'R':
+        *mode = (*mode = RESIZING) ? EDITING : RESIZING;
+        break;
+
     case 't':
-        ch = getch();
-        switch(ch) {
+        key = getch();
+        switch(key) {
         case 'h':
             newTile(tiler, LEFT);
             break;
@@ -55,9 +99,9 @@ handleKey(Tiler* tiler, char ch)
             break;
         }
         break;
-    case 'q':
-        return 1;
+
     }
+
     return 0;
 }
 
@@ -68,6 +112,7 @@ main(int argc, char *argv[])
     argv = argv;
 
     Tiler tiler;
+    Mode mode;
 
     if (enableRaw()) {
         perror("raw mode");
@@ -83,8 +128,10 @@ main(int argc, char *argv[])
 
     // main loop
 
+    mode = EDITING;
     for (;;) {
-        if (handleKey(&tiler, getch())) break;
+        char key = getch();
+        if (handleKey(key, &mode, &tiler)) break;
 
         clearScreen();
         drawTiles(&tiler);

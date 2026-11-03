@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include "geometry.h"
 
@@ -22,4 +23,5 @@ void drawTiles(Tiler *tiler);
 void newTile(Tiler *tiler, Dir dir);
 
 void selTileInCursorDir(Tiler *tiler, Dir dir);
-void rmTile(Tiler *tiler);
+void rmSel(Tiler *tiler);
+void reszSel(Tiler *tiler, Dir dir, bool growing);

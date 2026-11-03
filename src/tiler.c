@@ -314,7 +314,7 @@ walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], s
 }
 
 void
-rmTile(Tiler *tiler)
+rmSel(Tiler *tiler)
 {
     size_t i, dir;
     Rect *o_rect, *i_rect;
@@ -351,11 +351,111 @@ rmTile(Tiler *tiler)
         }
         break;
     }
+    deinitTile(&tiler->tiles[inner[0]]);
     tiler->tiles[inner[0]] = tiler->tiles[tiler->ts_len - 1];
     if (outer[0] != tiler->ts_len - 1)
         tiler->sel_idx = outer[0];
+
     tiler->ts_len--;
     free(inner);
     free(outer);
 }
 
+void
+reszSel(Tiler *tiler, Dir dir, bool growing)
+{
+    size_t i;
+    Rect *rect;
+    size_t *inner, *outer;
+    size_t i_len, o_len;
+    size_t vel, min;
+
+    vel = 8; // FIX MAGIC
+    min = vel;
+
+    walkSelEdge(tiler, dir, &inner, &i_len, &outer, &o_len);
+
+    // shrink in opposite direction if on the edge
+    if (growing && o_len == 0) {
+        free(inner);
+        free(outer);
+        switch (dir) {
+        case UP:
+            reszSel(tiler, DOWN, false);
+            return;
+        case DOWN:
+            reszSel(tiler, UP, false);
+            return;
+        case LEFT:
+            reszSel(tiler, RIGHT, false);
+            return;
+        case RIGHT:
+            reszSel(tiler, LEFT, false);
+            return;
+        }
+    }
+
+    // min size check on shrinking side
+    for (i = 0; i < ((growing) ? o_len : i_len); i++) {
+        rect = &tiler->tiles[(growing) ? outer[i] : inner[i]].rect;
+        switch (dir) {
+        case UP:
+        case DOWN:
+            if (rect->y2 - rect->y1 <= min) {
+                free(inner);
+                free(outer);
+                return;
+            }
+            break;
+        case LEFT:
+        case RIGHT:
+            if (rect->x2 - rect->x1 <= min) {
+                free(inner);
+                free(outer);
+                return;
+            }
+            break;
+        }
+    }
+
+    // adjust the inner aligned
+    for (i = 0; i < i_len; i++) {
+        rect = &tiler->tiles[inner[i]].rect;
+        switch (dir) {
+        case UP:
+            rect->y1 += (growing) ? -vel : vel;
+            break;
+        case DOWN:
+            rect->y2 += (growing) ? vel : -vel;
+            break;
+        case LEFT:
+            rect->x1 += (growing) ? -vel : vel;
+            break;
+        case RIGHT:
+            rect->x2 += (growing) ? vel : -vel;
+            break;
+        }
+    }
+
+    // adjust the outer aligned
+    for (i = 0; i < o_len; i++) {
+        rect = &tiler->tiles[outer[i]].rect;
+        switch (dir) {
+        case UP:
+            rect->y2 += (growing) ? -vel : vel;
+            break;
+        case DOWN:
+            rect->y1 += (growing) ? vel : -vel;
+            break;
+        case LEFT:
+            rect->x2 += (growing) ? -vel : vel;
+            break;
+        case RIGHT:
+            rect->x1 += (growing) ? vel : -vel;
+            break;
+        }
+    }
+
+    free(inner);
+    free(outer);
+}
