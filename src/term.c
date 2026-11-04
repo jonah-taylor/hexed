@@ -1,11 +1,6 @@
 #include "term.h"
-#include <signal.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
+
+#include "geometry.h"
 
 struct termios orig;
 int is_raw;

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 
+#include "cursor.h"
+#include "geometry.h"
 #include "term.h"
 #include "tile.h"
 #include "tiler.h"
-#include "geometry.h"
 
 typedef enum {
     RESIZING,
@@ -27,7 +28,7 @@ handleKey(char key, Mode *mode, Tiler* tiler)
             reszSel(tiler, LEFT, true);
             break;
         }
-        getSel(tiler)->cursor.x--;
+        getSel(tiler)->cursor->x--;
         break;
 
     case 'H':
@@ -39,7 +40,7 @@ handleKey(char key, Mode *mode, Tiler* tiler)
             reszSel(tiler, DOWN, true);
             break;
         }
-        getSel(tiler)->cursor.y++;
+        getSel(tiler)->cursor->y++;
         break;
 
     case 'J':
@@ -51,7 +52,7 @@ handleKey(char key, Mode *mode, Tiler* tiler)
             reszSel(tiler, UP, true);
             break;
         }
-        getSel(tiler)->cursor.y--;
+        getSel(tiler)->cursor->y--;
         break;
 
     case 'K':
@@ -63,7 +64,7 @@ handleKey(char key, Mode *mode, Tiler* tiler)
             reszSel(tiler, RIGHT, true);
             break;
         }
-        getSel(tiler)->cursor.x++;
+        getSel(tiler)->cursor->x++;
         break;
 
     case 'L':
@@ -79,7 +80,7 @@ handleKey(char key, Mode *mode, Tiler* tiler)
         break;
 
     case 'R':
-        *mode = (*mode = RESIZING) ? EDITING : RESIZING;
+        *mode = (*mode == RESIZING) ? EDITING : RESIZING;
         break;
 
     case 't':
@@ -111,7 +112,7 @@ main(int argc, char *argv[])
     argc = argc;
     argv = argv;
 
-    Tiler tiler;
+    Tiler *tiler;
     Mode mode;
 
     if (enableRaw()) {
@@ -122,23 +123,22 @@ main(int argc, char *argv[])
     enterAltScreen();
     clearScreen();
 
-    initTiler(&tiler);
-    drawTiles(&tiler);
+    tiler = initTiler();
+    drawTiles(tiler);
     fflush(stdout);
 
-    // main loop
-
     mode = EDITING;
+
     for (;;) {
         char key = getch();
-        if (handleKey(key, &mode, &tiler)) break;
+        if (handleKey(key, &mode, tiler)) break;
 
         clearScreen();
-        drawTiles(&tiler);
+        drawTiles(tiler);
         fflush(stdout);
     }
 
-    deinitTiler(&tiler);
+    freeTiler(tiler);
     exitAltScreen();
     disableRaw();
     return 0;

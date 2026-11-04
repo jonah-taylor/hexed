@@ -3,7 +3,7 @@ SRCS = $(wildcard src/*.c)
 FLAGS = -Wall -Wextra -Wpedantic \
 	-fsanitize=address,undefined \
 	-g \
-	-std=gnu11 -I include
+	-std=c23 -I include
 
 all: make_build
 	$(CC) $(FLAGS) $(SRCS) -o build/hex

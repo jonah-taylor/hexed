@@ -2,20 +2,22 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "geometry.h"
+#include <stdlib.h>
 
+enum Dir : int;
+typedef enum Dir Dir;
 typedef struct Tile Tile;
 
 typedef struct Tiler Tiler;
 struct Tiler
 {
-    Tile *tiles;
+    Tile **tiles;
     size_t ts_len, ts_cap;
     size_t sel_idx;
 };
 
-void initTiler(Tiler *tiler);
-void deinitTiler(Tiler *tiler);
+Tiler *initTiler();
+void freeTiler(Tiler *tiler);
 
 Tile *getSel(Tiler *tiler);
 

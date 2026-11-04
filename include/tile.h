@@ -1,23 +1,26 @@
 #pragma once
 
-#include "cursor.h"
-#include "geometry.h"
+#include <stdio.h>
+
+typedef struct Buf Buf;
+typedef struct Cursor Cursor;
+typedef struct Rect Rect;
 
 typedef enum {
-    text,
-    buf_menu,
+    buf_tt,
+    bufs_tt,
 } TileType;
 
 typedef struct Tile Tile;
 struct Tile
 {
-    // Buffer *buf;
-    Cursor cursor;
-    Rect rect;
-    TileType type;
+    Buf *buf;
+    Cursor *cursor;
+    Rect *rect;
+    TileType ttype;
 };
 
-void initTile(Tile *tile, Rect rect, Cursor cursor);
-void deinitTile(Tile *tile);
+Tile *initTile(Rect rect);
+void freeTile(Tile *tile);
 
 void drawTile(Tile *tile);

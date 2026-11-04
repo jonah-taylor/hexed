@@ -14,9 +14,10 @@ struct Tab
     size_t rows, cols;
 };
 
-typedef enum {
+enum Dir : int {
     UP = 0,
     DOWN = 1,
     LEFT = 2,
     RIGHT = 3,
-} Dir;
+};
+typedef enum Dir Dir;

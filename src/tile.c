@@ -1,23 +1,40 @@
 #include "tile.h"
-#include "term.h"
-#include "geometry.h"
-#include <stdio.h>
 
-void
-initTile(Tile *tile, Rect rect, Cursor cursor)
+#include "buf.h"
+#include "cursor.h"
+#include "geometry.h"
+#include "term.h"
+
+#include "utils/xmem.h"
+
+Tile*
+initTile(Rect tmp_rect)
 {
+    Tile *tile;
+    tile = xmalloc(sizeof(Tile));
+    Buf *buf = initBuf("empty");
+    Cursor *cursor = initCursor();
+    Rect *rect = xmalloc(sizeof(Rect));
+    *rect = tmp_rect;
     *tile = (Tile){
+        .buf = buf,
         .cursor = cursor,
         .rect = rect,
-        .type = text,
+        .ttype = buf_tt,
     };
+    return tile;
 }
 
 void
-deinitTile(Tile *tile)
+freeTile(Tile *tile)
 {
-    tile = tile;
-    return;
+    freeBuf(tile->buf);
+    freeCursor(tile->cursor);
+    free(tile->rect);
+    tile->rect = 0;
+
+    free(tile);
+    tile = 0;
 }
 
 void
@@ -27,18 +44,18 @@ drawTile(Tile *tile)
     size_t width, height;
     size_t x1, x2, y1, y2;
 
-    x1 = fixedFromPercX(tile->rect.x1);
-    x2 = fixedFromPercX(tile->rect.x2);
-    y1 = fixedFromPercY(tile->rect.y1);
-    y2 = fixedFromPercY(tile->rect.y2);
+    x1 = fixedFromPercX(tile->rect->x1);
+    x2 = fixedFromPercX(tile->rect->x2);
+    y1 = fixedFromPercY(tile->rect->y1);
+    y2 = fixedFromPercY(tile->rect->y2);
 
     width = x2 - x1;
     height = y2 - y1;
-    for (i = 0; i < width; i++) {
+    for (i = 0; i <= width; i++) {
         drawStrAtLoc(y1, x1 + i, "#");
         drawStrAtLoc(y2, x1 + i, "#");
     }
-    for (i = 0; i < height; i++) {
+    for (i = 0; i <= height; i++) {
         drawStrAtLoc(y1 + i, x1, "#");
         drawStrAtLoc(y1 + i, x2, "#");
     }

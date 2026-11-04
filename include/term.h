@@ -3,10 +3,12 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
-#include "geometry.h"
+
+typedef struct Tab Tab;
 
 extern struct termios orig;
 extern int is_raw;
