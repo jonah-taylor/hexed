@@ -24,8 +24,6 @@ freeBuf(Buf *buf)
     for (i = 0; i < buf->lns->len; i++)
         freeList(lget((List*)buf->lns->items, i));
     freeList(buf->lns);
-    buf->lns = 0;
 
     free(buf);
-    buf = 0;
 }

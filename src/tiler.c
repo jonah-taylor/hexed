@@ -42,7 +42,6 @@ freeTiler(Tiler *tiler)
     free(tiler->tiles);
 
     free(tiler);
-    tiler = 0;
 }
 
 void
@@ -157,12 +156,11 @@ getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed)
     return -1;
 }
 
-void
-selTileInCursorDir(Tiler *tiler, Dir dir)
+int
+getTileIdxInCursorDir(Tiler *tiler, Dir dir)
 {
     Tile *tile;
     Rect *rect;
-    int new_sel;
     size_t x, y;
 
     tile = getSel(tiler);
@@ -185,9 +183,34 @@ selTileInCursorDir(Tiler *tiler, Dir dir)
         break;
     }
 
-    new_sel = getTileIdxAtPoint(tiler, x, y, true);
+    return getTileIdxAtPoint(tiler, x, y, true);
+}
+
+void
+selTileInCursorDir(Tiler *tiler, Dir dir)
+{
+    int new_sel;
+    new_sel = getTileIdxInCursorDir(tiler, dir);
     if (new_sel != -1)
         tiler->sel_idx = new_sel;
+}
+
+void
+swapCursorDir(Tiler *tiler, Dir dir)
+{
+    Tile *sel, *oth;
+    Rect *tmp;
+    int oth_idx;
+
+    oth_idx = getTileIdxInCursorDir(tiler, dir);
+    if (oth_idx == -1) return;
+
+    sel = getSel(tiler);
+    oth = tiler->tiles[oth_idx];
+
+    tmp = sel->rect;
+    sel->rect = oth->rect;
+    oth->rect = tmp;
 }
 
 size_t
@@ -460,3 +483,20 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
     free(inner);
     free(outer);
 }
+
+void
+rotTilesCW(Tiler *tiler)
+{
+    size_t i, t1, t2;
+    Rect *rect;
+    for (i = 0; i < tiler->ts_len; i++) {
+        rect = tiler->tiles[i]->rect;
+        t1 = rect->x1;
+        t2 = rect->x2;
+        rect->x1 = PERC_DENOM - rect->y2;
+        rect->x2 = PERC_DENOM - rect->y1;
+        rect->y1 = t1;
+        rect->y2 = t2;
+    }
+}
+

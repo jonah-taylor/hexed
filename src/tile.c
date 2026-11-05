@@ -31,10 +31,8 @@ freeTile(Tile *tile)
     freeBuf(tile->buf);
     freeCursor(tile->cursor);
     free(tile->rect);
-    tile->rect = 0;
 
     free(tile);
-    tile = 0;
 }
 
 void

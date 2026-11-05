@@ -22,9 +22,7 @@ void
 freeList(List *list)
 {
     free(list->items);
-    list->items = 0;
     free(list);
-    list = 0;
 }
 
 void

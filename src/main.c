@@ -19,6 +19,10 @@ handleKey(char key, Mode *mode, Tiler* tiler)
 {
     switch(key) {
 
+    case 'C':
+        rotTilesCW(tiler);
+        break;
+
     case 'D':
         rmSel(tiler);
         break;
@@ -81,6 +85,24 @@ handleKey(char key, Mode *mode, Tiler* tiler)
 
     case 'R':
         *mode = (*mode == RESIZING) ? EDITING : RESIZING;
+        break;
+
+    case 'S':
+        key = getch();
+        switch(key) {
+        case 'h':
+            swapCursorDir(tiler, LEFT);
+            break;
+        case 'j':
+            swapCursorDir(tiler, DOWN);
+            break;
+        case 'k':
+            swapCursorDir(tiler, UP);
+            break;
+        case 'l':
+            swapCursorDir(tiler, RIGHT);
+            break;
+        }
         break;
 
     case 't':

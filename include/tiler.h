@@ -25,5 +25,8 @@ void drawTiles(Tiler *tiler);
 void newTile(Tiler *tiler, Dir dir);
 
 void selTileInCursorDir(Tiler *tiler, Dir dir);
+void swapCursorDir(Tiler *tiler, Dir);
+
 void rmSel(Tiler *tiler);
 void reszSel(Tiler *tiler, Dir dir, bool growing);
+void rotTilesCW(Tiler *tiler);
