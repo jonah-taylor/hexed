@@ -4,23 +4,85 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct List List;
-struct List {
-    char *items;
-    size_t elmsz;
-    size_t len;
-    size_t cap;
-};
+#include "utils/xmem.h"
 
-List *initList(size_t elmsz);
-void freeList(List *list);
-
-void lpush(List *list, void *elm);
-void lpop(List *list);
-
-void *lpeek(List *list);
-void *lget(List *list, size_t idx);
-
-void lins(List *list, size_t idx, void *elm);
-void lrm(List *list, size_t idx);
+#define INIT_LIST_CAP 8
+#define DEF_LIST(T, TypeName, FuncSig) \
+typedef struct TypeName TypeName; \
+struct TypeName { \
+    T *items; \
+    size_t len; \
+    size_t cap; \
+}; \
+\
+static inline TypeName* \
+init##TypeName() \
+{ \
+    TypeName *list = xmalloc(sizeof(TypeName)); \
+    *list = (TypeName){ \
+        .items = xmalloc(INIT_LIST_CAP * sizeof(T)), \
+        .len = 0, \
+        .cap = INIT_LIST_CAP, \
+    }; \
+\
+    return list; \
+} \
+\
+static inline void \
+free##TypeName(TypeName *list) \
+{ \
+    free(list->items); \
+    free(list); \
+} \
+\
+static inline void \
+FuncSig##Push(TypeName *list, T elm) \
+{ \
+    if (list->len == list->cap) \
+        list->items = xrealloc(list->items, &list->cap, sizeof(T)); \
+    list->items[list->len++] = elm; \
+} \
+\
+static inline T \
+FuncSig##Pop(TypeName *list) \
+{ \
+    if (list->len == 0) return (T){0}; \
+    return list->items[--list->len]; \
+} \
+\
+static inline T \
+FuncSig##Peek(TypeName *list) \
+{ \
+    if (list->len == 0) return (T){0}; \
+    return list->items[list->len - 1]; \
+} \
+\
+static inline void \
+FuncSig##Ins(TypeName *list, size_t idx, T elm) \
+{ \
+    if (idx > list->len) return; \
+    if (list->len == list->cap) \
+        list->items = xrealloc(list->items, &list->cap, sizeof(T)); \
+\
+    memmove( \
+        list->items + idx + 1, \
+        list->items + idx, \
+        (list->len - idx) * sizeof(T) \
+    ); \
+\
+    list->items[idx] = elm; \
+    list->len++; \
+} \
+\
+static inline void \
+FuncSig##Rm(TypeName *list, size_t idx) \
+{ \
+    if (list->len == 0 || idx >= list->len) return; \
+    memmove( \
+        list->items + idx, \
+        list->items + idx + 1, \
+        ((list->len - 1) - idx) * sizeof(T) \
+    ); \
+    list->len--; \
+}
 

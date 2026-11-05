@@ -8,6 +8,12 @@
 #include "utils/xmem.h"
 
 #define TILES_INIT_CAP 4
+#define SWAP(A, B) \
+    do { \
+        typeof(A) T = A; \
+        A = B; \
+        B = T; \
+    } while (0);
 
 Tiler*
 initTiler()
@@ -118,7 +124,8 @@ newTile(Tiler *tiler, Dir dir)
         tiler->ts_cap *= 2;
         tiler->tiles = xrealloc(
             tiler->tiles,
-            tiler->ts_cap * sizeof(*tiler->tiles)
+            &tiler->ts_cap,
+            sizeof(*tiler->tiles)
         );
     }
 
@@ -199,7 +206,6 @@ void
 swapCursorDir(Tiler *tiler, Dir dir)
 {
     Tile *sel, *oth;
-    Rect *tmp;
     int oth_idx;
 
     oth_idx = getTileIdxInCursorDir(tiler, dir);
@@ -208,9 +214,7 @@ swapCursorDir(Tiler *tiler, Dir dir)
     sel = getSel(tiler);
     oth = tiler->tiles[oth_idx];
 
-    tmp = sel->rect;
-    sel->rect = oth->rect;
-    oth->rect = tmp;
+    SWAP(sel->rect, oth->rect);
 }
 
 size_t
@@ -306,7 +310,7 @@ walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], s
         if (idx + 1 != 0 && (*i_len == 0 || (*in)[*i_len - 1] != idx)) {
             if (*i_len >= i_cap) {
                 i_cap *= 2;
-                *in = xrealloc(*in, i_cap * sizeof(size_t));
+                *in = xrealloc(*in, &i_cap, sizeof(size_t));
             }
             (*in)[(*i_len)++] = idx;
         }
@@ -328,7 +332,7 @@ walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], s
         if (idx + 1 != 0 && (*o_len == 0 || (*out)[*o_len - 1] != idx)) {
             if (*o_len >= o_cap) {
                 o_cap *= 2;
-                *out = xrealloc(*out, o_cap * sizeof(size_t));
+                *out = xrealloc(*out, &o_cap, sizeof(size_t));
             }
             (*out)[(*o_len)++] = idx;
         }

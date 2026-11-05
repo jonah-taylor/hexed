@@ -4,6 +4,9 @@
 
 #include "utils/xmem.h"
 
+DEF_LIST(char, LCh, lch)
+DEF_LIST(LCh, LLCh, llch)
+
 Buf*
 initBuf(char *tmp_name)
 {
@@ -11,7 +14,7 @@ initBuf(char *tmp_name)
     char *name = xstrdup(tmp_name);
     *buf = (Buf){
         .name = name,
-        .lns = initList(sizeof(List)),
+        .lns = initLLCh(),
     };
     return buf;
 }
@@ -22,8 +25,8 @@ freeBuf(Buf *buf)
     size_t i;
     free(buf->name);
     for (i = 0; i < buf->lns->len; i++)
-        freeList(lget((List*)buf->lns->items, i));
-    freeList(buf->lns);
+        freeLCh(&buf->lns->items[i]);
+    freeLLCh(buf->lns);
 
     free(buf);
 }

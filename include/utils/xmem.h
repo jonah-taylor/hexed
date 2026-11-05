@@ -1,15 +1,16 @@
 #pragma once
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static inline void*
-xmalloc(size_t size)
+xmalloc(size_t bytes)
 {
     void *p;
 
-    p = malloc(size);
+    p = malloc(bytes);
     if (!p) {
         fprintf(stderr, "error: out of memory (malloc)");
         exit(1);
@@ -18,11 +19,23 @@ xmalloc(size_t size)
 }
 
 static inline void*
-xrealloc(void *ptr, size_t size)
+xrealloc(void *ptr, size_t *cap, size_t t_sz)
 {
     void *p;
 
-    p = realloc(ptr, size);
+    if (*cap > SIZE_MAX / 2) {
+        fprintf(stderr, "error: cap overflow (realloc)");
+        exit(1);
+    }
+
+    *cap *= 2;
+
+    if (*cap > SIZE_MAX / t_sz) {
+        fprintf(stderr, "error: cap * t_sz overflow (realloc)");
+        exit(1);
+    }
+
+    p = realloc(ptr, *cap * t_sz);
     if (!p) {
         fprintf(stderr, "error: out of memory (realloc)");
         exit(1);
