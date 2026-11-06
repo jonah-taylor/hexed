@@ -21,16 +21,18 @@ initBuf(const char *tmp_name)
 }
 
 void
-freeBufItems(Buf *buf)
+freeBuf(Buf *buf)
 {
     size_t i;
+
     free(buf->name);
+
     for (i = 0; i < buf->lns->len; i++) {
-        freeLChItems(buf->lns->items[i]);
-        free(buf->lns->items[i]);
+        freeLCh(buf->lns->items[i]);
     }
-    freeLLChItems(buf->lns);
-    free(buf->lns);
+    freeLLCh(buf->lns);
+
+    free(buf);
 }
 
 void

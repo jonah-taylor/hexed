@@ -27,12 +27,13 @@ initTile(Rect tmp_rect)
 }
 
 void
-freeTileItems(Tile *tile)
+freeTile(Tile *tile)
 {
-    freeBufItems(tile->buf);
-    free(tile->buf);
+    freeBuf(tile->buf);
     free(tile->cursor);
     free(tile->rect);
+
+    free(tile);
 }
 
 void

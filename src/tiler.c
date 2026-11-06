@@ -16,6 +16,13 @@
         B = T; \
     } while (0);
 
+static int getTileIdxInCursorDir(Tiler *tiler, Dir dir);
+static int getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed);
+static size_t countTilesAtPoint(Tiler *tiler, size_t x, size_t y);
+static void walkSelEdge(Tiler *tiler, Dir dir,
+        size_t *in[], size_t *i_len,
+        size_t *out[], size_t *o_len);
+
 Tiler*
 initTiler()
 {
@@ -43,14 +50,20 @@ initTiler()
 }
 
 void
-freeTilerItems(Tiler *tiler)
+freeTiler(Tiler *tiler)
 {
     size_t i;
-    for (i = 0; i < tiler->ts_len; i++) {
-        freeTileItems(tiler->tiles[i]);
-        free(tiler->tiles[i]);
-    }
+    for (i = 0; i < tiler->ts_len; i++)
+        freeTile(tiler->tiles[i]);
     free(tiler->tiles);
+
+    free(tiler);
+}
+
+Tile*
+getSel(Tiler *tiler)
+{
+    return tiler->tiles[tiler->sel_idx];
 }
 
 void
@@ -66,12 +79,6 @@ drawTilesOnFrame(Tiler *tiler, Frame *frame)
         fixedFromPercY(tile->rect->y1) + tile->cursor->y,
         fixedFromPercX(tile->rect->x1) + tile->cursor->x
     );
-}
-
-Tile*
-getSel(Tiler *tiler)
-{
-    return tiler->tiles[tiler->sel_idx];
 }
 
 void
@@ -145,57 +152,6 @@ newTile(Tiler *tiler, Dir dir)
     tiler->ts_len++;
 }
 
-int
-getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed)
-{
-    Rect *rect;
-    size_t i;
-
-    for (i = 0; i < tiler->ts_len; i++) {
-        rect = tiler->tiles[i]->rect;
-        if (fixed) {
-            if (fixedFromPercX(rect->x1) <= x && x <= fixedFromPercX(rect->x2))
-            if (fixedFromPercY(rect->y1) <= y && y <= fixedFromPercY(rect->y2))
-                return i;
-        } else {
-            if (rect->x1 <= x && x <= rect->x2)
-            if (rect->y1 <= y && y <= rect->y2)
-                return i;
-        }
-    }
-    return -1;
-}
-
-int
-getTileIdxInCursorDir(Tiler *tiler, Dir dir)
-{
-    Tile *tile;
-    Rect *rect;
-    size_t x, y;
-
-    tile = getSel(tiler);
-    x = fixedFromPercX(tile->rect->x1) + tile->cursor->x;
-    y = fixedFromPercY(tile->rect->y1) + tile->cursor->y;
-
-    rect = tile->rect;
-    switch (dir) {
-    case UP:
-        y = fixedFromPercY(rect->y1) - 1;
-        break;
-    case DOWN:
-        y = fixedFromPercY(rect->y2) + 1;
-        break;
-    case LEFT:
-        x = fixedFromPercX(rect->x1) - 1;
-        break;
-    case RIGHT:
-        x = fixedFromPercX(rect->x2) + 1;
-        break;
-    }
-
-    return getTileIdxAtPoint(tiler, x, y, true);
-}
-
 void
 selTileInCursorDir(Tiler *tiler, Dir dir)
 {
@@ -218,129 +174,6 @@ swapCursorDir(Tiler *tiler, Dir dir)
     oth = tiler->tiles[oth_idx];
 
     SWAP(sel->rect, oth->rect);
-}
-
-size_t
-countTilesAtPoint(Tiler *tiler, size_t x, size_t y)
-{
-    size_t count, i;
-    Rect *rect;
-
-    count = 0;
-    for (i = 0; i < tiler->ts_len; i++) {
-        rect = tiler->tiles[i]->rect;
-        if (rect->x1 <= x && x <= rect->x2)
-        if (rect->y1 <= y && y <= rect->y2)
-            count++;
-    }
-    return count;
-}
-
-void
-walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], size_t *o_len)
-{
-    int x, y;
-    int shorter, longer;
-    size_t idx, tap;
-    size_t i_cap, o_cap;
-
-    *in = xmalloc(sizeof(size_t));
-    *i_len = 0;
-    i_cap = 1;
-    *out = xmalloc(sizeof(size_t));
-    *o_len = 0;
-    o_cap = 1;
-
-    x = (getSel(tiler)->rect->x2 + getSel(tiler)->rect->x1) / 2;
-    y = (getSel(tiler)->rect->y2 + getSel(tiler)->rect->y1) / 2;
-
-    // start at the middle of the edge
-    switch (dir) {
-    case UP:
-        y = getSel(tiler)->rect->y1;
-        break;
-    case DOWN:
-        y = getSel(tiler)->rect->y2;
-        break;
-    case LEFT:
-        x = getSel(tiler)->rect->x1;
-        break;
-    case RIGHT:
-        x = getSel(tiler)->rect->x2;
-        break;
-    }
-
-    // get the ends of the edge
-    switch (dir) {
-    case UP:
-    case DOWN:
-        shorter = x;
-        longer = x;
-        while ((tap = countTilesAtPoint(tiler, longer, y)) == 3 || tap == 2)
-            longer++;
-        while ((tap = countTilesAtPoint(tiler, shorter, y)) == 3 || tap == 2)
-            shorter--;
-        break;
-    case LEFT:
-    case RIGHT:
-        shorter = y;
-        longer = y;
-        while ((tap = countTilesAtPoint(tiler, x, longer)) == 3 || tap == 2)
-            longer++;
-        while ((tap = countTilesAtPoint(tiler, x, shorter)) == 3 || tap == 2)
-            shorter--;
-        break;
-    }
-    longer -= 2;
-    shorter += 2;
-
-    while (shorter < longer) {
-        // fill in
-        switch (dir) {
-        case UP:
-            idx = getTileIdxAtPoint(tiler, shorter, y + 1, false);
-            break;
-        case DOWN:
-            idx = getTileIdxAtPoint(tiler, shorter, y - 1, false);
-            break;
-        case LEFT:
-            idx = getTileIdxAtPoint(tiler, x + 1, shorter, false);
-            break;
-        case RIGHT:
-            idx = getTileIdxAtPoint(tiler, x - 1, shorter, false);
-            break;
-        }
-        if (idx + 1 != 0 && (*i_len == 0 || (*in)[*i_len - 1] != idx)) {
-            if (*i_len >= i_cap) {
-                i_cap *= 2;
-                *in = xrealloc(*in, &i_cap, sizeof(size_t));
-            }
-            (*in)[(*i_len)++] = idx;
-        }
-        // fill out
-        switch (dir) {
-        case UP:
-            idx = getTileIdxAtPoint(tiler, shorter, y - 1, false);
-            break;
-        case DOWN:
-            idx = getTileIdxAtPoint(tiler, shorter, y + 1, false);
-            break;
-        case LEFT:
-            idx = getTileIdxAtPoint(tiler, x - 1, shorter, false);
-            break;
-        case RIGHT:
-            idx = getTileIdxAtPoint(tiler, x + 1, shorter, false);
-            break;
-        }
-        if (idx + 1 != 0 && (*o_len == 0 || (*out)[*o_len - 1] != idx)) {
-            if (*o_len >= o_cap) {
-                o_cap *= 2;
-                *out = xrealloc(*out, &o_cap, sizeof(size_t));
-            }
-            (*out)[(*o_len)++] = idx;
-        }
-        shorter++;
-    }
 }
 
 void
@@ -382,8 +215,7 @@ rmSel(Tiler *tiler)
         break;
     }
 
-    freeTileItems(tiler->tiles[inner[0]]);
-    free(tiler->tiles[inner[0]]);
+    freeTile(tiler->tiles[inner[0]]);
 
     tiler->tiles[inner[0]] = tiler->tiles[tiler->ts_len - 1];
     if (outer[0] != tiler->ts_len - 1)
@@ -510,3 +342,176 @@ rotTilesCW(Tiler *tiler)
     }
 }
 
+static int
+getTileIdxInCursorDir(Tiler *tiler, Dir dir)
+{
+    Tile *tile;
+    Rect *rect;
+    size_t x, y;
+
+    tile = getSel(tiler);
+    x = fixedFromPercX(tile->rect->x1) + tile->cursor->x;
+    y = fixedFromPercY(tile->rect->y1) + tile->cursor->y;
+
+    rect = tile->rect;
+    switch (dir) {
+    case UP:
+        y = fixedFromPercY(rect->y1) - 1;
+        break;
+    case DOWN:
+        y = fixedFromPercY(rect->y2) + 1;
+        break;
+    case LEFT:
+        x = fixedFromPercX(rect->x1) - 1;
+        break;
+    case RIGHT:
+        x = fixedFromPercX(rect->x2) + 1;
+        break;
+    }
+
+    return getTileIdxAtPoint(tiler, x, y, true);
+}
+
+static int
+getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed)
+{
+    Rect *rect;
+    size_t i;
+
+    for (i = 0; i < tiler->ts_len; i++) {
+        rect = tiler->tiles[i]->rect;
+        if (fixed) {
+            if (fixedFromPercX(rect->x1) <= x && x <= fixedFromPercX(rect->x2))
+            if (fixedFromPercY(rect->y1) <= y && y <= fixedFromPercY(rect->y2))
+                return i;
+        } else {
+            if (rect->x1 <= x && x <= rect->x2)
+            if (rect->y1 <= y && y <= rect->y2)
+                return i;
+        }
+    }
+    return -1;
+}
+
+static size_t
+countTilesAtPoint(Tiler *tiler, size_t x, size_t y)
+{
+    size_t count, i;
+    Rect *rect;
+
+    count = 0;
+    for (i = 0; i < tiler->ts_len; i++) {
+        rect = tiler->tiles[i]->rect;
+        if (rect->x1 <= x && x <= rect->x2)
+        if (rect->y1 <= y && y <= rect->y2)
+            count++;
+    }
+    return count;
+}
+
+static void
+walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], size_t *o_len)
+{
+    int x, y;
+    int shorter, longer;
+    size_t idx, tap;
+    size_t i_cap, o_cap;
+
+    *in = xmalloc(sizeof(size_t));
+    *i_len = 0;
+    i_cap = 1;
+    *out = xmalloc(sizeof(size_t));
+    *o_len = 0;
+    o_cap = 1;
+
+    x = (getSel(tiler)->rect->x2 + getSel(tiler)->rect->x1) / 2;
+    y = (getSel(tiler)->rect->y2 + getSel(tiler)->rect->y1) / 2;
+
+    // start at the middle of the edge
+    switch (dir) {
+    case UP:
+        y = getSel(tiler)->rect->y1;
+        break;
+    case DOWN:
+        y = getSel(tiler)->rect->y2;
+        break;
+    case LEFT:
+        x = getSel(tiler)->rect->x1;
+        break;
+    case RIGHT:
+        x = getSel(tiler)->rect->x2;
+        break;
+    }
+
+    // get the ends of the edge
+    switch (dir) {
+    case UP:
+    case DOWN:
+        shorter = x;
+        longer = x;
+        while ((tap = countTilesAtPoint(tiler, longer, y)) == 3 || tap == 2)
+            longer++;
+        while ((tap = countTilesAtPoint(tiler, shorter, y)) == 3 || tap == 2)
+            shorter--;
+        break;
+    case LEFT:
+    case RIGHT:
+        shorter = y;
+        longer = y;
+        while ((tap = countTilesAtPoint(tiler, x, longer)) == 3 || tap == 2)
+            longer++;
+        while ((tap = countTilesAtPoint(tiler, x, shorter)) == 3 || tap == 2)
+            shorter--;
+        break;
+    }
+    longer -= 2;
+    shorter += 2;
+
+    while (shorter < longer) {
+        // fill in
+        switch (dir) {
+        case UP:
+            idx = getTileIdxAtPoint(tiler, shorter, y + 1, false);
+            break;
+        case DOWN:
+            idx = getTileIdxAtPoint(tiler, shorter, y - 1, false);
+            break;
+        case LEFT:
+            idx = getTileIdxAtPoint(tiler, x + 1, shorter, false);
+            break;
+        case RIGHT:
+            idx = getTileIdxAtPoint(tiler, x - 1, shorter, false);
+            break;
+        }
+        if (idx + 1 != 0 && (*i_len == 0 || (*in)[*i_len - 1] != idx)) {
+            if (*i_len >= i_cap) {
+                i_cap *= 2;
+                *in = xrealloc(*in, &i_cap, sizeof(size_t));
+            }
+            (*in)[(*i_len)++] = idx;
+        }
+        // fill out
+        switch (dir) {
+        case UP:
+            idx = getTileIdxAtPoint(tiler, shorter, y - 1, false);
+            break;
+        case DOWN:
+            idx = getTileIdxAtPoint(tiler, shorter, y + 1, false);
+            break;
+        case LEFT:
+            idx = getTileIdxAtPoint(tiler, x - 1, shorter, false);
+            break;
+        case RIGHT:
+            idx = getTileIdxAtPoint(tiler, x + 1, shorter, false);
+            break;
+        }
+        if (idx + 1 != 0 && (*o_len == 0 || (*out)[*o_len - 1] != idx)) {
+            if (*o_len >= o_cap) {
+                o_cap *= 2;
+                *out = xrealloc(*out, &o_cap, sizeof(size_t));
+            }
+            (*out)[(*o_len)++] = idx;
+        }
+        shorter++;
+    }
+}

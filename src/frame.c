@@ -9,6 +9,8 @@
 DEF_LIST(LCell, Cell, lc)
 DEF_LIST(LLCell, LCell*, llc)
 
+static bool cellsEql(const Cell* a, const Cell* b);
+
 Frame*
 initFrame()
 {
@@ -23,24 +25,21 @@ initFrame()
 }
 
 void
-freeFrameItems(Frame *frame)
+freeFrame(Frame *frame)
 {
     size_t i;
 
     assert(frame->curr->len == frame->prev->len);
 
     for (i = 0; i < frame->curr->len; i++) {
-        freeLCellItems(frame->curr->items[i]);
-        free(frame->curr->items[i]);
-        freeLCellItems(frame->prev->items[i]);
-        free(frame->prev->items[i]);
+        freeLCell(frame->curr->items[i]);
+        freeLCell(frame->prev->items[i]);
     }
 
-    freeLLCellItems(frame->curr);
-    freeLLCellItems(frame->prev);
+    freeLLCell(frame->curr);
+    freeLLCell(frame->prev);
 
-    free(frame->curr);
-    free(frame->prev);
+    free(frame);
 }
 
 void
@@ -63,10 +62,8 @@ reszFrame(Frame *frame, Tab tab)
     old_row_len = frame->curr->len;
 
     for (r = tab.rows; r < frame->curr->len; r++) {
-        freeLCellItems(frame->curr->items[r]);
-        free(frame->curr->items[r]);
-        freeLCellItems(frame->prev->items[r]);
-        free(frame->prev->items[r]);
+        freeLCell(frame->curr->items[r]);
+        freeLCell(frame->prev->items[r]);
     }
     llcResz(frame->curr, tab.rows);
     llcResz(frame->prev, tab.rows);
@@ -92,14 +89,6 @@ setCell(Frame *frame, int row, int col, Cell cell)
     frame->curr->items[row]->items[col] = cell;
 }
 
-bool
-cellsREql(Cell* a, Cell* b)
-{
-    return a->fg == b->fg
-        && a->bg == b->bg
-        && strncmp(a->str, b->str, sizeof(a->str)) == 0;
-}
-
 void
 drawFrame(Frame *frame)
 {
@@ -112,7 +101,7 @@ drawFrame(Frame *frame)
             Cell *curr_cell = &frame->curr->items[r]->items[c];
             Cell *prev_cell = &frame->prev->items[r]->items[c];
 
-            if (cellsREql(curr_cell, prev_cell))
+            if (cellsEql(curr_cell, prev_cell))
                 continue;
 
             // setColors(curr_cell->fg, curr_cell->bg);
@@ -132,3 +121,10 @@ drawFrame(Frame *frame)
     loadCursorPos();
 }
 
+static bool
+cellsEql(const Cell* a, const Cell* b)
+{
+    return a->fg == b->fg
+        && a->bg == b->bg
+        && strncmp(a->str, b->str, sizeof(a->str)) == 0;
+}

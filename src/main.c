@@ -29,26 +29,74 @@ struct App {
     Tiler *tiler;
 };
 
-void
-freeAppItems(App *app)
+static void freeApp(App *app);
+static int handleKey(char key, App *app);
+
+int
+main(int argc, char *argv[])
+{
+    App *app;
+
+    argc = argc;
+    argv = argv;
+
+    app = xmalloc(sizeof(*app));
+    *app = (App){
+        .lbufs = initLBuf(),
+        .frame = initFrame(),
+        .mode = EDITING,
+        .tiler = initTiler(),
+    };
+
+    lbPush(app->lbufs, initBuf("empty"));
+
+    if (enableRaw()) {
+        perror("raw mode");
+        exit(1);
+    }
+
+    enterAltScreen();
+    clearScreen();
+
+    reszFrame(app->frame, getTermSz());
+    drawTilesOnFrame(app->tiler, app->frame);
+    drawFrame(app->frame);
+    fflush(stdout);
+
+    for (;;) {
+        char key = getch();
+        if (handleKey(key, app)) break;
+
+        reszFrame(app->frame, getTermSz());
+        drawTilesOnFrame(app->tiler, app->frame);
+
+        drawFrame(app->frame);
+        fflush(stdout);
+    }
+
+    freeApp(app);
+
+    exitAltScreen();
+    disableRaw();
+    return 0;
+}
+
+static void
+freeApp(App *app)
 {
     size_t i;
 
     for (i = 0; i < app->lbufs->len; i++) {
-        freeBufItems(app->lbufs->items[i]);
-        free(app->lbufs->items[i]);
+        freeBuf(app->lbufs->items[i]);
     }
-    freeLBufItems(app->lbufs);
-    free(app->lbufs);
+    freeLBuf(app->lbufs);
+    freeFrame(app->frame);
+    freeTiler(app->tiler);
 
-    freeFrameItems(app->frame);
-    free(app->frame);
-
-    freeTilerItems(app->tiler);
-    free(app->tiler);
+    free(app);
 }
 
-int
+static int
 handleKey(char key, App *app)
 {
     switch(key) {
@@ -161,54 +209,3 @@ handleKey(char key, App *app)
 
     return 0;
 }
-
-int
-main(int argc, char *argv[])
-{
-    App *app;
-
-    argc = argc;
-    argv = argv;
-
-    app = xmalloc(sizeof(*app));
-    *app = (App){
-        .lbufs = initLBuf(),
-        .frame = initFrame(),
-        .mode = EDITING,
-        .tiler = initTiler(),
-    };
-
-    lbPush(app->lbufs, initBuf("empty"));
-
-    if (enableRaw()) {
-        perror("raw mode");
-        exit(1);
-    }
-
-    enterAltScreen();
-    clearScreen();
-
-    reszFrame(app->frame, getTermSz());
-    drawTilesOnFrame(app->tiler, app->frame);
-    drawFrame(app->frame);
-    fflush(stdout);
-
-    for (;;) {
-        char key = getch();
-        if (handleKey(key, app)) break;
-
-        reszFrame(app->frame, getTermSz());
-        drawTilesOnFrame(app->tiler, app->frame);
-
-        drawFrame(app->frame);
-        fflush(stdout);
-    }
-
-    freeAppItems(app);
-    free(app);
-
-    exitAltScreen();
-    disableRaw();
-    return 0;
-}
-
