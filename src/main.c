@@ -157,11 +157,11 @@ main(int argc, char *argv[])
     mode = EDITING;
 
     for (;;) {
-        reszFrame(frame, getTermSz());
 
         char key = getch();
         if (handleKey(key, &mode, tiler)) break;
 
+        reszFrame(frame, getTermSz());
         drawTilesOnFrame(tiler, frame);
 
         drawFrame(frame);

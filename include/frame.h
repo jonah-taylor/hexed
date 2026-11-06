@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <string.h>
 
 typedef struct Tab Tab;
 

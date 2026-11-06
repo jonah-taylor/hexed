@@ -53,11 +53,16 @@ void
 reszFrame(Frame *frame, Tab tab)
 {
     size_t r;
-    llcResz(frame->curr, tab.rows + 1);
-    llcResz(frame->prev, tab.rows + 1);
+
+    for (r = tab.rows + 1; r < frame->curr->len; r++) {
+        freeLCellItems(&frame->curr->items[r]);
+        freeLCellItems(&frame->prev->items[r]);
+    }
+    llcResz(frame->curr, tab.rows);
+    llcResz(frame->prev, tab.rows);
     for (r = 0; r < frame->curr->len; r++) {
-        lcResz(&frame->curr->items[r], tab.cols + 1);
-        lcResz(&frame->prev->items[r], tab.cols + 1);
+        lcResz(&frame->curr->items[r], tab.cols);
+        lcResz(&frame->prev->items[r], tab.cols);
     }
 }
 
@@ -76,7 +81,7 @@ cellsREql(Cell* a, Cell* b)
 {
     return a->fg == b->fg
         && a->bg == b->bg
-        && strncmp(a->str, b->str, sizeof(a->str) == 0);
+        && strncmp(a->str, b->str, sizeof(a->str)) == 0;
 }
 
 void
@@ -94,7 +99,7 @@ drawFrame(Frame *frame)
             if (cellsREql(curr_cell, prev_cell))
                 continue;
 
-            // setColors(cell->fg, cell->bg);
+            // setColors(curr_cell->fg, curr_cell->bg);
             if (curr_cell->str[0] == '\0') {
                 drawStrAtLoc(r, c, " ");
             } else {
