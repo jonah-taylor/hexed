@@ -1,6 +1,7 @@
 #include "tiler.h"
 
 #include "cursor.h"
+#include "frame.h"
 #include "tile.h"
 #include "term.h"
 #include "geometry.h"
@@ -40,23 +41,23 @@ initTiler()
 }
 
 void
-freeTiler(Tiler *tiler)
+freeTilerItems(Tiler *tiler)
 {
     size_t i;
-    for (i = 0; i < tiler->ts_len; i++)
-        freeTile(tiler->tiles[i]);
+    for (i = 0; i < tiler->ts_len; i++) {
+        freeTileItems(tiler->tiles[i]);
+        free(tiler->tiles[i]);
+    }
     free(tiler->tiles);
-
-    free(tiler);
 }
 
 void
-drawTiles(Tiler *tiler)
+drawTilesOnFrame(Tiler *tiler, Frame *frame)
 {
     Tile *tile;
     size_t i;
     for (i = 0; i < tiler->ts_len; i++) {
-        drawTile(tiler->tiles[i]);
+        drawTileOnFrame(tiler->tiles[i], frame);
     }
     tile = getSel(tiler);
     moveCursorTo(
@@ -100,22 +101,22 @@ newTile(Tiler *tiler, Dir dir)
     switch (dir) {
     case UP:
         y2 = y1 + (y2 - y1) / 2;
-        y2 = (y2 + 4) / 8 * 8;
+        y2 = (y2 + 4) / INC * INC;
         tile->rect->y1 = y2;
         break;
     case DOWN:
         y1 = y1 + (y2 - y1) / 2;
-        y1 = (y1 + 4) / 8 * 8;
+        y1 = (y1 + 4) / INC * INC;
         tile->rect->y2 = y1;
         break;
     case LEFT:
         x2 = x1 + (x2 - x1) / 2;
-        x2 = (x2 + 4) / 8 * 8;
+        x2 = (x2 + 4) / INC * INC;
         tile->rect->x1 = x2;
         break;
     case RIGHT:
         x1 = x1 + (x2 - x1) / 2;
-        x1 = (x1 + 4) / 8 * 8;
+        x1 = (x1 + 4) / INC * INC;
         tile->rect->x2 = x1;
         break;
     }
@@ -378,7 +379,10 @@ rmSel(Tiler *tiler)
         }
         break;
     }
-    freeTile(tiler->tiles[inner[0]]);
+
+    freeTileItems(tiler->tiles[inner[0]]);
+    free(tiler->tiles[inner[0]]);
+
     tiler->tiles[inner[0]] = tiler->tiles[tiler->ts_len - 1];
     if (outer[0] != tiler->ts_len - 1)
         tiler->sel_idx = outer[0];
@@ -397,7 +401,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
     size_t i_len, o_len;
     size_t vel, min_x, min_y;
 
-    vel = 8; // FIX MAGIC
+    vel = INC;
     min_x = vel;
     min_y = vel;
 

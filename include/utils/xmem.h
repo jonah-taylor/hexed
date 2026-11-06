@@ -19,6 +19,19 @@ xmalloc(size_t bytes)
 }
 
 static inline void*
+xcalloc(size_t bytes)
+{
+    void *p;
+
+    p = calloc(bytes, 1);
+    if (!p) {
+        fprintf(stderr, "error: out of memory (calloc)");
+        exit(1);
+    }
+    return p;
+}
+
+static inline void*
 xrealloc(void *ptr, size_t *cap, size_t t_sz)
 {
     void *p;

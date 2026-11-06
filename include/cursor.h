@@ -9,4 +9,3 @@ struct Cursor {
 };
 
 Cursor* initCursor();
-void freeCursor(Cursor *cursor);

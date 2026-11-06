@@ -13,7 +13,8 @@ typedef struct Tab Tab;
 extern struct termios orig;
 extern int is_raw;
 
-#define PERC_DENOM 256
+#define PERC_DENOM 1024
+#define INC 32
 
 void clearScreen();
 
@@ -38,7 +39,6 @@ void drawStrAtLoc(size_t row, size_t col, const char *str);
 Tab getTermSz();
 
 void disableRaw(void);
-void onFatal(int sig);
 int enableRaw(void);
 
 size_t fixedFromPercX(int x);

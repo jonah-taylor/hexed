@@ -20,7 +20,7 @@ init##TypeName() \
 { \
     TypeName *list = xmalloc(sizeof(TypeName)); \
     *list = (TypeName){ \
-        .items = xmalloc(INIT_LIST_CAP * sizeof(T)), \
+        .items = xcalloc(INIT_LIST_CAP * sizeof(T)), \
         .len = 0, \
         .cap = INIT_LIST_CAP, \
     }; \
@@ -29,10 +29,26 @@ init##TypeName() \
 } \
 \
 static inline void \
-free##TypeName(TypeName *list) \
+free##TypeName##Items(TypeName *list) \
 { \
     free(list->items); \
     free(list); \
+} \
+\
+static inline void \
+FuncSig##Resz(TypeName *list, size_t nwsz) \
+{ \
+    size_t oldsz = list->len; \
+\
+    if (nwsz > len > list->cap) { \
+        list->cap = nwsz; \
+        list->items = xrealloc(list->items, &list->cap, sizeof(T)); \
+    } \
+\
+    if (nwsz > oldsz) \
+        memset(&list->items[oldsz], 0, (nwsz - oldsz) * sizeof(T)); \
+\
+    list->len = nwsz; \
 } \
 \
 static inline void \

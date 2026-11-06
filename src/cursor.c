@@ -13,9 +13,3 @@ initCursor()
     return cursor;
 }
 
-void
-freeCursor(Cursor *cursor)
-{
-    free(cursor);
-    cursor = 0;
-}

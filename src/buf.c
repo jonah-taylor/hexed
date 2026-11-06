@@ -1,11 +1,10 @@
 #include "buf.h"
 
-#include "list.h"
-
+#include "utils/list.h"
 #include "utils/xmem.h"
 
-DEF_LIST(char, LCh, lch)
-DEF_LIST(LCh, LLCh, llch)
+DEF_LIST(LCh, char, lch)
+DEF_LIST(LLCh, LCh, llch)
 
 Buf*
 initBuf(char *tmp_name)
@@ -20,13 +19,14 @@ initBuf(char *tmp_name)
 }
 
 void
-freeBuf(Buf *buf)
+freeBufItems(Buf *buf)
 {
     size_t i;
     free(buf->name);
-    for (i = 0; i < buf->lns->len; i++)
-        freeLCh(&buf->lns->items[i]);
-    freeLLCh(buf->lns);
-
-    free(buf);
+    for (i = 0; i < buf->lns->len; i++) {
+        freeLChItems(&buf->lns->items[i]);
+        free(&buf->lns->items[i]);
+    }
+    freeLLChItems(buf->lns);
+    free(buf->lns);
 }

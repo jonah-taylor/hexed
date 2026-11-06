@@ -4,6 +4,7 @@
 
 typedef struct Buf Buf;
 typedef struct Cursor Cursor;
+typedef struct Frame Frame;
 typedef struct Rect Rect;
 
 typedef enum {
@@ -21,6 +22,6 @@ struct Tile
 };
 
 Tile *initTile(Rect rect);
-void freeTile(Tile *tile);
+void freeTileItems(Tile *tile);
 
-void drawTile(Tile *tile);
+void drawTileOnFrame(Tile *tile, Frame *frame);

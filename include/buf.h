@@ -9,4 +9,4 @@ struct Buf {
 };
 
 Buf* initBuf(char *name);
-void freeBuf(Buf *buf);
+void freeBufItems(Buf *buf);

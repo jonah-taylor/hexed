@@ -1,6 +1,7 @@
 CC = gcc
 SRCS = $(wildcard src/*.c)
 FLAGS = -Wall -Wextra -Wpedantic \
+	-Wno-missing-field-initializers \
 	-fsanitize=address,undefined \
 	-g \
 	-std=c23 -I include

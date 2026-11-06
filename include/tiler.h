@@ -6,6 +6,7 @@
 
 enum Dir : int;
 typedef enum Dir Dir;
+typedef struct Frame Frame;
 typedef struct Tile Tile;
 
 typedef struct Tiler Tiler;
@@ -17,11 +18,11 @@ struct Tiler
 };
 
 Tiler *initTiler();
-void freeTiler(Tiler *tiler);
+void freeTilerItems(Tiler *tiler);
 
 Tile *getSel(Tiler *tiler);
 
-void drawTiles(Tiler *tiler);
+void drawTilesOnFrame(Tiler *tiler, Frame *frame);
 void newTile(Tiler *tiler, Dir dir);
 
 void selTileInCursorDir(Tiler *tiler, Dir dir);

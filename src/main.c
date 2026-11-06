@@ -3,6 +3,7 @@
 #include <sys/ioctl.h>
 
 #include "cursor.h"
+#include "frame.h"
 #include "geometry.h"
 #include "term.h"
 #include "tile.h"
@@ -135,6 +136,7 @@ main(int argc, char *argv[])
     argv = argv;
 
     Tiler *tiler;
+    Frame *frame;
     Mode mode;
 
     if (enableRaw()) {
@@ -146,21 +148,31 @@ main(int argc, char *argv[])
     clearScreen();
 
     tiler = initTiler();
-    drawTiles(tiler);
+    frame = initFrame();
+    reszFrame(frame, getTermSz());
+    drawTilesOnFrame(tiler, frame);
+    drawFrame(frame);
     fflush(stdout);
 
     mode = EDITING;
 
     for (;;) {
+        reszFrame(frame, getTermSz());
+
         char key = getch();
         if (handleKey(key, &mode, tiler)) break;
 
-        clearScreen();
-        drawTiles(tiler);
+        drawTilesOnFrame(tiler, frame);
+
+        drawFrame(frame);
         fflush(stdout);
     }
 
-    freeTiler(tiler);
+    freeFrameItems(frame);
+    free(frame);
+    freeTilerItems(tiler);
+    free(tiler);
+
     exitAltScreen();
     disableRaw();
     return 0;

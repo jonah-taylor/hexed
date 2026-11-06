@@ -2,6 +2,7 @@
 
 #include "buf.h"
 #include "cursor.h"
+#include "frame.h"
 #include "geometry.h"
 #include "term.h"
 
@@ -26,17 +27,16 @@ initTile(Rect tmp_rect)
 }
 
 void
-freeTile(Tile *tile)
+freeTileItems(Tile *tile)
 {
-    freeBuf(tile->buf);
-    freeCursor(tile->cursor);
+    freeBufItems(tile->buf);
+    free(tile->buf);
+    free(tile->cursor);
     free(tile->rect);
-
-    free(tile);
 }
 
 void
-drawTile(Tile *tile)
+drawTileOnFrame(Tile *tile, Frame *frame)
 {
     size_t i;
     size_t width, height;
@@ -50,12 +50,12 @@ drawTile(Tile *tile)
     width = x2 - x1;
     height = y2 - y1;
     for (i = 0; i <= width; i++) {
-        drawStrAtLoc(y1, x1 + i, "#");
-        drawStrAtLoc(y2, x1 + i, "#");
+        setCell(frame, y1, x1 + i, (Cell){"#"});
+        setCell(frame, y2, x1 + i, (Cell){"#"});
     }
     for (i = 0; i <= height; i++) {
-        drawStrAtLoc(y1 + i, x1, "#");
-        drawStrAtLoc(y1 + i, x2, "#");
+        setCell(frame, y1 + i, x1, (Cell){"#"});
+        setCell(frame, y1 + i, x2, (Cell){"#"});
     }
 }
 
