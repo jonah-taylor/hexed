@@ -12,17 +12,17 @@ Tile*
 initTile(Rect tmp_rect)
 {
     Tile *tile;
-    tile = xmalloc(sizeof(Tile));
-    Buf *buf = initBuf("empty");
-    Cursor *cursor = initCursor();
-    Rect *rect = xmalloc(sizeof(Rect));
-    *rect = tmp_rect;
+
+    tile = xmalloc(sizeof(*tile));
     *tile = (Tile){
-        .buf = buf,
-        .cursor = cursor,
-        .rect = rect,
+        .buf = initBuf("empty"),
+        .cursor = initCursor(),
+        .rect = xmalloc(sizeof(tmp_rect)),
         .ttype = buf_tt,
     };
+
+    *tile->rect = tmp_rect;
+
     return tile;
 }
 

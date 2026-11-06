@@ -5,7 +5,9 @@
 Cursor*
 initCursor()
 {
-    Cursor *cursor = xmalloc(sizeof(Cursor));
+    Cursor *cursor;
+
+    cursor = xmalloc(sizeof(Cursor));
     *cursor = (Cursor){
         .x = 1,
         .y = 1,

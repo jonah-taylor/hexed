@@ -8,5 +8,7 @@ struct Buf {
     LLCh *lns; // List of Lists of Chars
 };
 
-Buf* initBuf(char *name);
+Buf* initBuf(const char *name);
 void freeBufItems(Buf *buf);
+
+void loadFile(Buf *buf, const char *fname);

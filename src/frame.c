@@ -7,7 +7,7 @@
 #include "utils/xmem.h"
 
 DEF_LIST(LCell, Cell, lc)
-DEF_LIST(LLCell, LCell, llc)
+DEF_LIST(LLCell, LCell*, llc)
 
 Frame*
 initFrame()
@@ -27,14 +27,19 @@ freeFrameItems(Frame *frame)
 {
     size_t i;
 
-    for (i = 0; i < frame->curr->len; i++)
-        freeLCellItems(&frame->curr->items[i]);
-    freeLLCellItems(frame->curr);
-    free(frame->curr);
+    assert(frame->curr->len == frame->prev->len);
 
-    for (i = 0; i < frame->prev->len; i++)
-        freeLCellItems(&frame->prev->items[i]);
+    for (i = 0; i < frame->curr->len; i++) {
+        freeLCellItems(frame->curr->items[i]);
+        free(frame->curr->items[i]);
+        freeLCellItems(frame->prev->items[i]);
+        free(frame->prev->items[i]);
+    }
+
+    freeLLCellItems(frame->curr);
     freeLLCellItems(frame->prev);
+
+    free(frame->curr);
     free(frame->prev);
 }
 
@@ -43,8 +48,8 @@ clearCurrFrame(Frame *frame)
 {
     size_t r, c;
     for (r = 0; r < frame->curr->len; r++) {
-        for (c = 0; c < frame->curr->items[r].len; c++) {
-            frame->curr->items[r].items[c] = (Cell){0};
+        for (c = 0; c < frame->curr->items[r]->len; c++) {
+            frame->curr->items[r]->items[c] = (Cell){0};
         }
     }
 }
@@ -53,16 +58,27 @@ void
 reszFrame(Frame *frame, Tab tab)
 {
     size_t r;
+    size_t old_row_len;
+ 
+    old_row_len = frame->curr->len;
 
-    for (r = tab.rows + 1; r < frame->curr->len; r++) {
-        freeLCellItems(&frame->curr->items[r]);
-        freeLCellItems(&frame->prev->items[r]);
+    for (r = tab.rows; r < frame->curr->len; r++) {
+        freeLCellItems(frame->curr->items[r]);
+        free(frame->curr->items[r]);
+        freeLCellItems(frame->prev->items[r]);
+        free(frame->prev->items[r]);
     }
     llcResz(frame->curr, tab.rows);
     llcResz(frame->prev, tab.rows);
+
+    for (r = old_row_len; r < frame->curr->len; r++) {
+        frame->curr->items[r] = initLCell();
+        frame->prev->items[r] = initLCell();
+    }
+
     for (r = 0; r < frame->curr->len; r++) {
-        lcResz(&frame->curr->items[r], tab.cols);
-        lcResz(&frame->prev->items[r], tab.cols);
+        lcResz(frame->curr->items[r], tab.cols);
+        lcResz(frame->prev->items[r], tab.cols);
     }
 }
 
@@ -71,9 +87,9 @@ setCell(Frame *frame, int row, int col, Cell cell)
 {
     if (row < 0 || col < 0
         || (size_t)row >= frame->curr->len
-        || (size_t)col >= frame->curr->items[row].len)
+        || (size_t)col >= frame->curr->items[row]->len)
         return;
-    frame->curr->items[row].items[col] = cell;
+    frame->curr->items[row]->items[col] = cell;
 }
 
 bool
@@ -92,9 +108,9 @@ drawFrame(Frame *frame)
     saveCursorPos();
     moveCursorTo(0, 0);
     for (r = 0; r < frame->curr->len; r++) {
-        for (c = 0; c < frame->curr->items[r].len; c++) {
-            Cell *curr_cell = &frame->curr->items[r].items[c];
-            Cell *prev_cell = &frame->prev->items[r].items[c];
+        for (c = 0; c < frame->curr->items[r]->len; c++) {
+            Cell *curr_cell = &frame->curr->items[r]->items[c];
+            Cell *prev_cell = &frame->prev->items[r]->items[c];
 
             if (cellsREql(curr_cell, prev_cell))
                 continue;

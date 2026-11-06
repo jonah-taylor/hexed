@@ -19,7 +19,9 @@
 Tiler*
 initTiler()
 {
-    Tiler *tiler = xmalloc(sizeof(Tiler));
+    Tiler *tiler;
+
+    tiler = xmalloc(sizeof(Tiler));
     *tiler = (Tiler){
         .tiles = xmalloc(TILES_INIT_CAP * sizeof(Tile)),
         .ts_len = 1,

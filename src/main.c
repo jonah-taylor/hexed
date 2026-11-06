@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 
+#include "buf.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
@@ -9,71 +10,103 @@
 #include "tile.h"
 #include "tiler.h"
 
+#include "utils/list.h"
+#include "utils/xmem.h"
+
+DEF_LIST(LBuf, Buf*, lb)
+
 typedef enum {
     RESIZING,
     TYPING,
     EDITING,
 } Mode;
 
+typedef struct App App;
+struct App {
+    LBuf *lbufs;
+    Frame *frame;
+    Mode mode;
+    Tiler *tiler;
+};
+
+void
+freeAppItems(App *app)
+{
+    size_t i;
+
+    for (i = 0; i < app->lbufs->len; i++) {
+        freeBufItems(app->lbufs->items[i]);
+        free(app->lbufs->items[i]);
+    }
+    freeLBufItems(app->lbufs);
+    free(app->lbufs);
+
+    freeFrameItems(app->frame);
+    free(app->frame);
+
+    freeTilerItems(app->tiler);
+    free(app->tiler);
+}
+
 int
-handleKey(char key, Mode *mode, Tiler* tiler)
+handleKey(char key, App *app)
 {
     switch(key) {
 
     case 'C':
-        rotTilesCW(tiler);
+        rotTilesCW(app->tiler);
         break;
 
     case 'D':
-        rmSel(tiler);
+        rmSel(app->tiler);
         break;
 
     case 'h':
-        if (*mode == RESIZING) {
-            reszSel(tiler, LEFT, true);
+        if (app->mode == RESIZING) {
+            reszSel(app->tiler, LEFT, true);
             break;
         }
-        getSel(tiler)->cursor->x--;
+        getSel(app->tiler)->cursor->x--;
         break;
 
     case 'H':
-        selTileInCursorDir(tiler, LEFT);
+        selTileInCursorDir(app->tiler, LEFT);
         break;
 
     case 'j':
-        if (*mode == RESIZING) {
-            reszSel(tiler, DOWN, true);
+        if (app->mode == RESIZING) {
+            reszSel(app->tiler, DOWN, true);
             break;
         }
-        getSel(tiler)->cursor->y++;
+        getSel(app->tiler)->cursor->y++;
         break;
 
     case 'J':
-        selTileInCursorDir(tiler, DOWN);
+        selTileInCursorDir(app->tiler, DOWN);
         break;
 
     case 'k':
-        if (*mode == RESIZING) {
-            reszSel(tiler, UP, true);
+        if (app->mode == RESIZING) {
+            reszSel(app->tiler, UP, true);
             break;
         }
-        getSel(tiler)->cursor->y--;
+        getSel(app->tiler)->cursor->y--;
         break;
 
     case 'K':
-        selTileInCursorDir(tiler, UP);
+        selTileInCursorDir(app->tiler, UP);
         break;
 
     case 'l':
-        if (*mode == RESIZING) {
-            reszSel(tiler, RIGHT, true);
+        if (app->mode == RESIZING) {
+            reszSel(app->tiler, RIGHT, true);
             break;
         }
-        getSel(tiler)->cursor->x++;
+        getSel(app->tiler)->cursor->x++;
         break;
 
     case 'L':
-        selTileInCursorDir(tiler, RIGHT);
+        selTileInCursorDir(app->tiler, RIGHT);
         break;
 
     case 'q':
@@ -85,23 +118,23 @@ handleKey(char key, Mode *mode, Tiler* tiler)
         break;
 
     case 'R':
-        *mode = (*mode == RESIZING) ? EDITING : RESIZING;
+        app->mode = (app->mode == RESIZING) ? EDITING : RESIZING;
         break;
 
     case 'S':
         key = getch();
         switch(key) {
         case 'h':
-            swapCursorDir(tiler, LEFT);
+            swapCursorDir(app->tiler, LEFT);
             break;
         case 'j':
-            swapCursorDir(tiler, DOWN);
+            swapCursorDir(app->tiler, DOWN);
             break;
         case 'k':
-            swapCursorDir(tiler, UP);
+            swapCursorDir(app->tiler, UP);
             break;
         case 'l':
-            swapCursorDir(tiler, RIGHT);
+            swapCursorDir(app->tiler, RIGHT);
             break;
         }
         break;
@@ -110,16 +143,16 @@ handleKey(char key, Mode *mode, Tiler* tiler)
         key = getch();
         switch(key) {
         case 'h':
-            newTile(tiler, LEFT);
+            newTile(app->tiler, LEFT);
             break;
         case 'j':
-            newTile(tiler, DOWN);
+            newTile(app->tiler, DOWN);
             break;
         case 'k':
-            newTile(tiler, UP);
+            newTile(app->tiler, UP);
             break;
         case 'l':
-            newTile(tiler, RIGHT);
+            newTile(app->tiler, RIGHT);
             break;
         }
         break;
@@ -132,12 +165,20 @@ handleKey(char key, Mode *mode, Tiler* tiler)
 int
 main(int argc, char *argv[])
 {
+    App *app;
+
     argc = argc;
     argv = argv;
 
-    Tiler *tiler;
-    Frame *frame;
-    Mode mode;
+    app = xmalloc(sizeof(*app));
+    *app = (App){
+        .lbufs = initLBuf(),
+        .frame = initFrame(),
+        .mode = EDITING,
+        .tiler = initTiler(),
+    };
+
+    lbPush(app->lbufs, initBuf("empty"));
 
     if (enableRaw()) {
         perror("raw mode");
@@ -147,31 +188,24 @@ main(int argc, char *argv[])
     enterAltScreen();
     clearScreen();
 
-    tiler = initTiler();
-    frame = initFrame();
-    reszFrame(frame, getTermSz());
-    drawTilesOnFrame(tiler, frame);
-    drawFrame(frame);
+    reszFrame(app->frame, getTermSz());
+    drawTilesOnFrame(app->tiler, app->frame);
+    drawFrame(app->frame);
     fflush(stdout);
 
-    mode = EDITING;
-
     for (;;) {
-
         char key = getch();
-        if (handleKey(key, &mode, tiler)) break;
+        if (handleKey(key, app)) break;
 
-        reszFrame(frame, getTermSz());
-        drawTilesOnFrame(tiler, frame);
+        reszFrame(app->frame, getTermSz());
+        drawTilesOnFrame(app->tiler, app->frame);
 
-        drawFrame(frame);
+        drawFrame(app->frame);
         fflush(stdout);
     }
 
-    freeFrameItems(frame);
-    free(frame);
-    freeTilerItems(tiler);
-    free(tiler);
+    freeAppItems(app);
+    free(app);
 
     exitAltScreen();
     disableRaw();
