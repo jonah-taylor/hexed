@@ -22,6 +22,6 @@ struct Tile
 };
 
 Tile *initTile(Rect rect);
-void freeTileItems(Tile *tile);
+void freeTile(Tile *tile);
 
 void drawTileOnFrame(Tile *tile, Frame *frame);

@@ -9,6 +9,6 @@ struct Buf {
 };
 
 Buf* initBuf(const char *name);
-void freeBufItems(Buf *buf);
+void freeBuf(Buf *buf);
 
 void loadFile(Buf *buf, const char *fname);

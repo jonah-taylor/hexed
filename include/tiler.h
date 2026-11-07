@@ -18,7 +18,7 @@ struct Tiler
 };
 
 Tiler *initTiler();
-void freeTilerItems(Tiler *tiler);
+void freeTiler(Tiler *tiler);
 
 Tile *getSel(Tiler *tiler);
 

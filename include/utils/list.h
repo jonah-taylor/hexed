@@ -29,9 +29,10 @@ init##TypeName() \
 } \
 \
 static inline void \
-free##TypeName##Items(TypeName *list) \
+free##TypeName(TypeName *list) \
 { \
     free(list->items); \
+    free(list); \
 } \
 \
 static inline void \

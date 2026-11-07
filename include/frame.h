@@ -21,7 +21,7 @@ struct Frame {
 };
 
 Frame *initFrame();
-void freeFrameItems(Frame *frame);
+void freeFrame(Frame *frame);
 
 void clearCurrFrame(Frame *frame);
 void reszFrame(Frame *frame, Tab tab);
