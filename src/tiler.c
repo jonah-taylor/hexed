@@ -1,11 +1,11 @@
-#include "tiler.h"
-
+#include "app.h"
+#include "buf.h"
 #include "cursor.h"
 #include "frame.h"
-#include "tile.h"
-#include "term.h"
 #include "geometry.h"
-
+#include "term.h"
+#include "tile.h"
+#include "tiler.h"
 #include "utils/xmem.h"
 
 #define TILES_INIT_CAP 4
@@ -24,7 +24,7 @@ static void walkSelEdge(Tiler *tiler, Dir dir,
         size_t *out[], size_t *o_len);
 
 Tiler*
-initTiler()
+initTiler(Buf *buf)
 {
     Tiler *tiler;
 
@@ -42,7 +42,8 @@ initTiler()
             .y1 = 0,
             .x2 = PERC_DENOM,
             .y2 = PERC_DENOM,
-        }
+        },
+        buf
     );
 
     tiler->tiles[0] = tile;
@@ -67,12 +68,12 @@ getSel(Tiler *tiler)
 }
 
 void
-drawTilesOnFrame(Tiler *tiler, Frame *frame)
+drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode)
 {
     Tile *tile;
     size_t i;
     for (i = 0; i < tiler->ts_len; i++) {
-        drawTileOnFrame(tiler->tiles[i], frame);
+        drawTileOnFrame(tiler->tiles[i], frame, mode);
     }
     tile = getSel(tiler);
     moveCursorTo(
@@ -82,7 +83,7 @@ drawTilesOnFrame(Tiler *tiler, Frame *frame)
 }
 
 void
-newTile(Tiler *tiler, Dir dir)
+newTile(Tiler *tiler, Dir dir, Buf *buf)
 {
     Tile *tile;
     size_t x1, x2, y1, y2;
@@ -145,7 +146,8 @@ newTile(Tiler *tiler, Dir dir)
             .y1 = y1,
             .x2 = x2,
             .y2 = y2,
-        }
+        },
+        buf
     );
 
     tiler->sel_idx = tiler->ts_len;

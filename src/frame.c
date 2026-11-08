@@ -1,8 +1,6 @@
 #include "frame.h"
-
 #include "geometry.h"
 #include "term.h"
-
 #include "utils/list.h"
 #include "utils/xmem.h"
 

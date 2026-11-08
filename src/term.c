@@ -1,6 +1,5 @@
-#include "term.h"
-
 #include "geometry.h"
+#include "term.h"
 
 struct termios orig;
 int is_raw;

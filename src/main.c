@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-
+#include "app.h"
 #include "buf.h"
 #include "cursor.h"
 #include "frame.h"
@@ -9,25 +6,10 @@
 #include "term.h"
 #include "tile.h"
 #include "tiler.h"
-
 #include "utils/list.h"
 #include "utils/xmem.h"
 
 DEF_LIST(LBuf, Buf*, lb)
-
-typedef enum {
-    RESIZING,
-    TYPING,
-    EDITING,
-} Mode;
-
-typedef struct App App;
-struct App {
-    LBuf *lbufs;
-    Frame *frame;
-    Mode mode;
-    Tiler *tiler;
-};
 
 static void freeApp(App *app);
 static int handleKey(char key, App *app);
@@ -45,10 +27,13 @@ main(int argc, char *argv[])
         .lbufs = initLBuf(),
         .frame = initFrame(),
         .mode = EDITING,
-        .tiler = initTiler(),
+        .tiler = 0,
     };
 
     lbPush(app->lbufs, initBuf("empty"));
+    loadFile(app->lbufs->items[0], "src/main.c");
+
+    app->tiler = initTiler(app->lbufs->items[0]);
 
     if (enableRaw()) {
         perror("raw mode");
@@ -59,7 +44,7 @@ main(int argc, char *argv[])
     clearScreen();
 
     reszFrame(app->frame, getTermSz());
-    drawTilesOnFrame(app->tiler, app->frame);
+    drawTilesOnFrame(app->tiler, app->frame, app->mode);
     drawFrame(app->frame);
     fflush(stdout);
 
@@ -68,7 +53,7 @@ main(int argc, char *argv[])
         if (handleKey(key, app)) break;
 
         reszFrame(app->frame, getTermSz());
-        drawTilesOnFrame(app->tiler, app->frame);
+        drawTilesOnFrame(app->tiler, app->frame, app->mode);
 
         drawFrame(app->frame);
         fflush(stdout);
@@ -191,16 +176,16 @@ handleKey(char key, App *app)
         key = getch();
         switch(key) {
         case 'h':
-            newTile(app->tiler, LEFT);
+            newTile(app->tiler, LEFT, app->lbufs->items[0]);
             break;
         case 'j':
-            newTile(app->tiler, DOWN);
+            newTile(app->tiler, DOWN, app->lbufs->items[0]);
             break;
         case 'k':
-            newTile(app->tiler, UP);
+            newTile(app->tiler, UP, app->lbufs->items[0]);
             break;
         case 'l':
-            newTile(app->tiler, RIGHT);
+            newTile(app->tiler, RIGHT, app->lbufs->items[0]);
             break;
         }
         break;

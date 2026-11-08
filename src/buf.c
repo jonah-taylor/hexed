@@ -1,5 +1,4 @@
 #include "buf.h"
-
 #include "utils/list.h"
 #include "utils/xmem.h"
 
@@ -39,7 +38,7 @@ void
 loadFile(Buf *buf, const char *fname)
 {
     FILE *fp;
-    size_t row, col;
+    size_t row;
     char ch;
 
     fp = fopen(fname, "r");
@@ -50,15 +49,14 @@ loadFile(Buf *buf, const char *fname)
 
     row = 0;
     for (;;) {
-        col = 0;
 
         llchPush(buf->lns, initLCh());
-        row++;
 
         while ((ch = fgetc(fp)) != '\n' && ch != EOF)
-            buf->lns->items[row]->items[col++] = ch;
+            lchPush(buf->lns->items[row], ch);
 
         if (ch == EOF) break;
+        row++;
     }
 }
 

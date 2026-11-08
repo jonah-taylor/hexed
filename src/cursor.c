@@ -1,5 +1,4 @@
 #include "cursor.h"
-
 #include "utils/xmem.h"
 
 Cursor*
