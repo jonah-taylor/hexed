@@ -34,3 +34,4 @@ Tile *initTile(Rect rect, Buf *buf);
 void freeTile(Tile *tile);
 
 void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode);
+void updateCursor(Tile *t);

@@ -17,8 +17,8 @@
     } while (0);
 
 static int getTileIdxInCursorDir(Tiler *tiler, Dir dir);
-static int getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed);
-static size_t countTilesAtPoint(Tiler *tiler, size_t x, size_t y);
+static int getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed);
+static size_t countTilesAtPoint(Tiler *tiler, int x, int y);
 static void walkSelEdge(Tiler *tiler, Dir dir,
         size_t *in[], size_t *i_len,
         size_t *out[], size_t *o_len);
@@ -70,16 +70,9 @@ getSel(Tiler *tiler)
 void
 drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode)
 {
-    Tile *tile;
     size_t i;
-    for (i = 0; i < tiler->ts_len; i++) {
+    for (i = 0; i < tiler->ts_len; i++)
         drawTileOnFrame(tiler->tiles[i], frame, mode);
-    }
-    tile = getSel(tiler);
-    moveCursorTo(
-        fixedFromPercY(tile->rect.y1) + tile->curs.y,
-        fixedFromPercX(tile->rect.x1) + tile->curs.x
-    );
 }
 
 void
@@ -235,7 +228,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
     Rect *rect;
     size_t *inner, *outer;
     size_t i_len, o_len;
-    size_t vel, min_x, min_y;
+    int vel, min_x, min_y;
 
     vel = INC;
     min_x = vel;
@@ -375,7 +368,7 @@ getTileIdxInCursorDir(Tiler *tiler, Dir dir)
 }
 
 static int
-getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed)
+getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed)
 {
     Rect *rect;
     size_t i;
@@ -396,7 +389,7 @@ getTileIdxAtPoint(Tiler *tiler, size_t x, size_t y, bool fixed)
 }
 
 static size_t
-countTilesAtPoint(Tiler *tiler, size_t x, size_t y)
+countTilesAtPoint(Tiler *tiler, int x, int y)
 {
     size_t count, i;
     Rect *rect;

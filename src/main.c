@@ -31,7 +31,7 @@ main(int argc, char *argv[])
     };
 
     lbPush(app->lbufs, initBuf("empty"));
-    loadFile(app->lbufs->items[0], "src/main.c");
+    loadFile(app->lbufs->items[0], "test.txt");
 
     app->tiler = initTiler(app->lbufs->items[0]);
 
@@ -46,6 +46,7 @@ main(int argc, char *argv[])
     reszFrame(app->frame, getTermSz());
     drawTilesOnFrame(app->tiler, app->frame, app->mode);
     drawFrame(app->frame);
+    updateCursor(getSel(app->tiler));
     fflush(stdout);
 
     for (;;) {
@@ -56,6 +57,7 @@ main(int argc, char *argv[])
         drawTilesOnFrame(app->tiler, app->frame, app->mode);
 
         drawFrame(app->frame);
+        updateCursor(getSel(app->tiler));
         fflush(stdout);
     }
 
@@ -99,7 +101,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, LEFT, true);
             break;
         }
-        getSel(app->tiler)->curs.x--;
+        getSel(app->tiler)->curs.ch--;
         break;
 
     case 'H':
@@ -111,7 +113,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, DOWN, true);
             break;
         }
-        getSel(app->tiler)->curs.y++;
+        getSel(app->tiler)->curs.ln++;
         break;
 
     case 'J':
@@ -123,7 +125,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, UP, true);
             break;
         }
-        getSel(app->tiler)->curs.y--;
+        getSel(app->tiler)->curs.ln--;
         break;
 
     case 'K':
@@ -135,7 +137,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, RIGHT, true);
             break;
         }
-        getSel(app->tiler)->curs.x++;
+        getSel(app->tiler)->curs.ch++;
         break;
 
     case 'L':

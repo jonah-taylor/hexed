@@ -23,7 +23,6 @@ struct Frame {
 Frame *initFrame();
 void freeFrame(Frame *frame);
 
-void clearCurrFrame(Frame *frame);
 void reszFrame(Frame *frame, Tab tab);
 void setFrameCell(Frame *frame, int row, int col, Cell cell);
 void drawFrame(Frame *frame);

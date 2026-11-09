@@ -1,0 +1,17 @@
+
+
+
+static void
+clearCurrFrame(Frame *frame)
+{
+    size_t r, c;
+    for (r = 0; r < frame->curr->len; r++) {
+        for (c = 0; c < frame->curr->items[r]->len; c++) {
+            frame->curr->items[r]->items[c] = (Cell){
+                .str = " ",
+                .fg = -1,
+                .bg = -1,
+            };
+        }
+    }
+}

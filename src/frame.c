@@ -8,6 +8,8 @@ DEF_LIST(LCell, Cell, lc)
 DEF_LIST(LLCell, LCell*, llc)
 
 static bool cellsEql(const Cell* a, const Cell* b);
+static void clearCurrFrame(Frame *frame);
+static void clearPrevFrame(Frame *frame);
 
 Frame*
 initFrame()
@@ -41,23 +43,20 @@ freeFrame(Frame *frame)
 }
 
 void
-clearCurrFrame(Frame *frame)
-{
-    size_t r, c;
-    for (r = 0; r < frame->curr->len; r++) {
-        for (c = 0; c < frame->curr->items[r]->len; c++) {
-            frame->curr->items[r]->items[c] = (Cell){0};
-        }
-    }
-}
-
-void
 reszFrame(Frame *frame, Tab tab)
 {
     size_t r;
     size_t old_row_len;
  
     old_row_len = frame->curr->len;
+
+    if (tab.rows == old_row_len)
+    if (old_row_len > 0)
+    if (tab.cols == frame->curr->items[0]->len)
+        return;
+
+    clearCurrFrame(frame);
+    clearPrevFrame(frame);
 
     for (r = tab.rows; r < frame->curr->len; r++) {
         freeLCell(frame->curr->items[r]);
@@ -102,13 +101,6 @@ drawFrame(Frame *frame)
             if (cellsEql(curr_cell, prev_cell))
                 continue;
 
-            if (curr_cell->str[0] == 0) {
-                *curr_cell = (Cell){
-                    .str = " ",
-                    .fg = -1,
-                    .bg = -1,
-                };
-            }
             setColors(curr_cell->fg, curr_cell->bg);
             drawStrAtLoc(r, c, curr_cell->str);
         }
@@ -128,4 +120,30 @@ cellsEql(const Cell* a, const Cell* b)
     return a->fg == b->fg
         && a->bg == b->bg
         && strncmp(a->str, b->str, sizeof(a->str)) == 0;
+}
+
+static void
+clearCurrFrame(Frame *frame)
+{
+    size_t r, c;
+    for (r = 0; r < frame->curr->len; r++) {
+        for (c = 0; c < frame->curr->items[r]->len; c++) {
+            frame->curr->items[r]->items[c] = (Cell){
+                .str = " ",
+                .fg = -1,
+                .bg = -1,
+            };
+        }
+    }
+}
+
+static void
+clearPrevFrame(Frame *frame)
+{
+    size_t r, c;
+    for (r = 0; r < frame->prev->len; r++) {
+        for (c = 0; c < frame->prev->items[r]->len; c++) {
+            frame->prev->items[r]->items[c] = (Cell){0};
+        }
+    }
 }

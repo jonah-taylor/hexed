@@ -77,9 +77,9 @@ setColors(int fg, int bg)
     if (fg < 0 || bg < 0)
         printf("\x1b[0m");
     if (fg > 0)
-        printf("\x1b[%dm", 30 + fg);
+        printf("\x1b[%dm", fg);
     if (bg > 0)
-        printf("\x1b[%dm", 40 + fg);
+        printf("\x1b[%dm", fg);
 }
 
 void
@@ -185,13 +185,13 @@ enableRaw()
     return 0;
 }
 
-size_t
+int
 fixedFromPercX(int x)
 {
     return x * getTermSz().cols / PERC_DENOM;
 }
 
-size_t
+int
 fixedFromPercY(int y)
 {
     return y * getTermSz().rows / PERC_DENOM;
@@ -208,7 +208,7 @@ fixedFromPercRect(Rect rect)
     };
 }
 
-size_t
+int
 percFromFixedX(int x)
 {
     Tab sz = getTermSz();
@@ -217,7 +217,7 @@ percFromFixedX(int x)
     return x * PERC_DENOM / sz.cols;
 }
 
-size_t
+int
 percFromFixedY(int y)
 {
     Tab sz = getTermSz();

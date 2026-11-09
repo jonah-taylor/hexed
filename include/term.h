@@ -42,9 +42,9 @@ Tab getTermSz();
 void disableRaw(void);
 int enableRaw(void);
 
-size_t fixedFromPercX(int x);
-size_t fixedFromPercY(int y);
+int fixedFromPercX(int x);
+int fixedFromPercY(int y);
 Rect fixedFromPercRect(Rect rect);
 
-size_t percFromFixedX(int x);
-size_t percFromFixedY(int y);
+int percFromFixedX(int x);
+int percFromFixedY(int y);

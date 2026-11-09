@@ -5,7 +5,7 @@
 typedef struct Rect Rect;
 struct Rect
 {
-    size_t x1, x2, y1, y2;
+    int x1, x2, y1, y2;
 };
 
 typedef struct Tab Tab;
