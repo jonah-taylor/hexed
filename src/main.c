@@ -99,7 +99,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, LEFT, true);
             break;
         }
-        getSel(app->tiler)->cursor->x--;
+        getSel(app->tiler)->curs.x--;
         break;
 
     case 'H':
@@ -111,7 +111,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, DOWN, true);
             break;
         }
-        getSel(app->tiler)->cursor->y++;
+        getSel(app->tiler)->curs.y++;
         break;
 
     case 'J':
@@ -123,7 +123,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, UP, true);
             break;
         }
-        getSel(app->tiler)->cursor->y--;
+        getSel(app->tiler)->curs.y--;
         break;
 
     case 'K':
@@ -135,7 +135,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, RIGHT, true);
             break;
         }
-        getSel(app->tiler)->cursor->x++;
+        getSel(app->tiler)->curs.x++;
         break;
 
     case 'L':

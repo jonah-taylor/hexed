@@ -5,6 +5,9 @@
 typedef struct Buf Buf;
 typedef struct Cursor Cursor;
 typedef struct Frame Frame;
+typedef struct LBkCv LBkCv;
+enum Mode : int;
+typedef enum Mode Mode;
 typedef struct Rect Rect;
 
 typedef enum {
@@ -12,16 +15,22 @@ typedef enum {
     bufs_tt,
 } TileType;
 
+typedef struct BkCv BkCv; // buffer key, cursor value
+struct BkCv {
+    Buf *k;
+    Cursor v;
+};
+
 typedef struct Tile Tile;
-struct Tile
-{
+struct Tile {
     Buf *buf;
-    Cursor *cursor;
-    Rect *rect;
+    LBkCv *lBkCv;
+    Cursor curs;
+    Rect rect;
     TileType ttype;
 };
 
-Tile *initTile(Rect rect);
+Tile *initTile(Rect rect, Buf *buf);
 void freeTile(Tile *tile);
 
-void drawTileOnFrame(Tile *tile, Frame *frame);
+void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode);

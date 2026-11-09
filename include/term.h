@@ -8,6 +8,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+typedef struct Rect Rect;
 typedef struct Tab Tab;
 
 extern struct termios orig;
@@ -43,5 +44,7 @@ int enableRaw(void);
 
 size_t fixedFromPercX(int x);
 size_t fixedFromPercY(int y);
+Rect fixedFromPercRect(Rect rect);
+
 size_t percFromFixedX(int x);
 size_t percFromFixedY(int y);

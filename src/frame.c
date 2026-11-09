@@ -78,7 +78,7 @@ reszFrame(Frame *frame, Tab tab)
 }
 
 void
-setCell(Frame *frame, int row, int col, Cell cell)
+setFrameCell(Frame *frame, int row, int col, Cell cell)
 {
     if (row < 0 || col < 0
         || (size_t)row >= frame->curr->len
@@ -102,12 +102,15 @@ drawFrame(Frame *frame)
             if (cellsEql(curr_cell, prev_cell))
                 continue;
 
-            // setColors(curr_cell->fg, curr_cell->bg);
-            if (curr_cell->str[0] == '\0') {
-                drawStrAtLoc(r, c, " ");
-            } else {
-                drawStrAtLoc(r, c, curr_cell->str);
+            if (curr_cell->str[0] == 0) {
+                *curr_cell = (Cell){
+                    .str = " ",
+                    .fg = -1,
+                    .bg = -1,
+                };
             }
+            setColors(curr_cell->fg, curr_cell->bg);
+            drawStrAtLoc(r, c, curr_cell->str);
         }
     }
 

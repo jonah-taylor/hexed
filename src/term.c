@@ -74,7 +74,12 @@ exitAltScreen()
 void
 setColors(int fg, int bg)
 {
-    printf("\x1b[%d;%dm", 30 + fg, 40 + bg);
+    if (fg < 0 || bg < 0)
+        printf("\x1b[0m");
+    if (fg > 0)
+        printf("\x1b[%dm", 30 + fg);
+    if (bg > 0)
+        printf("\x1b[%dm", 40 + fg);
 }
 
 void
@@ -190,6 +195,17 @@ size_t
 fixedFromPercY(int y)
 {
     return y * getTermSz().rows / PERC_DENOM;
+}
+
+Rect
+fixedFromPercRect(Rect rect)
+{
+    return (Rect){
+        .x1 = fixedFromPercX(rect.x1),
+        .y1 = fixedFromPercY(rect.y1),
+        .x2 = fixedFromPercX(rect.x2),
+        .y2 = fixedFromPercY(rect.y2),
+    };
 }
 
 size_t

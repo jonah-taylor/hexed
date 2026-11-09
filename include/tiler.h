@@ -7,6 +7,8 @@
 enum Dir : int;
 typedef enum Dir Dir;
 typedef struct Frame Frame;
+enum Mode : int;
+typedef enum Mode Mode;
 typedef struct Tile Tile;
 
 typedef struct Tiler Tiler;
@@ -17,13 +19,13 @@ struct Tiler
     size_t sel_idx;
 };
 
-Tiler *initTiler();
+Tiler *initTiler(Buf *buf);
 void freeTiler(Tiler *tiler);
 
 Tile *getSel(Tiler *tiler);
 
-void drawTilesOnFrame(Tiler *tiler, Frame *frame);
-void newTile(Tiler *tiler, Dir dir);
+void drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode);
+void newTile(Tiler *tiler, Dir dir, Buf *buf);
 
 void selTileInCursorDir(Tiler *tiler, Dir dir);
 void swapCursorDir(Tiler *tiler, Dir);

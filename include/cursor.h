@@ -5,7 +5,10 @@
 
 typedef struct Cursor Cursor;
 struct Cursor {
-    size_t x, y;
-};
+    size_t ln;
+    size_t ch;
+    size_t ideal_ch;
 
-Cursor* initCursor();
+    size_t x;
+    size_t y;
+};
