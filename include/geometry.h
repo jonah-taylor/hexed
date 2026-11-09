@@ -11,7 +11,7 @@ struct Rect
 typedef struct Tab Tab;
 struct Tab
 {
-    size_t rows, cols;
+    int rows, cols;
 };
 
 enum Dir : int {

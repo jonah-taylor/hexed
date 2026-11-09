@@ -22,7 +22,7 @@ initBuf(const char *tmp_name)
 void
 freeBuf(Buf *buf)
 {
-    size_t i;
+    int i;
 
     free(buf->name);
 
@@ -38,7 +38,7 @@ void
 loadFile(Buf *buf, const char *fname)
 {
     FILE *fp;
-    size_t row;
+    int row;
     char ch;
 
     fp = fopen(fname, "r");

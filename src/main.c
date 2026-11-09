@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 static void
 freeApp(App *app)
 {
-    size_t i;
+    int i;
 
     for (i = 0; i < app->lbufs->len; i++) {
         freeBuf(app->lbufs->items[i]);
@@ -101,11 +101,19 @@ handleKey(char key, App *app)
             reszSel(app->tiler, LEFT, true);
             break;
         }
-        getSel(app->tiler)->curs.ch--;
+        hKeyDown(getSel(app->tiler));
         break;
 
     case 'H':
         selTileInCursorDir(app->tiler, LEFT);
+        break;
+
+    case 'i':
+        iKeyDown(getSel(app->tiler));
+        break;
+
+    case 'I':
+        IKeyDown(getSel(app->tiler));
         break;
 
     case 'j':
@@ -113,7 +121,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, DOWN, true);
             break;
         }
-        getSel(app->tiler)->curs.ln++;
+        jKeyDown(getSel(app->tiler));
         break;
 
     case 'J':
@@ -125,7 +133,7 @@ handleKey(char key, App *app)
             reszSel(app->tiler, UP, true);
             break;
         }
-        getSel(app->tiler)->curs.ln--;
+        kKeyDown(getSel(app->tiler));
         break;
 
     case 'K':
@@ -137,11 +145,27 @@ handleKey(char key, App *app)
             reszSel(app->tiler, RIGHT, true);
             break;
         }
-        getSel(app->tiler)->curs.ch++;
+        lKeyDown(getSel(app->tiler));
         break;
 
     case 'L':
         selTileInCursorDir(app->tiler, RIGHT);
+        break;
+
+    case 'm':
+        mKeyDown(getSel(app->tiler));
+        break;
+
+    case 'M':
+        MKeyDown(getSel(app->tiler));
+        break;
+
+    case 'o':
+        oKeyDown(getSel(app->tiler));
+        break;
+
+    case 'O':
+        OKeyDown(getSel(app->tiler));
         break;
 
     case 'q':

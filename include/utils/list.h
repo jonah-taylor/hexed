@@ -11,8 +11,8 @@
 typedef struct TypeName TypeName; \
 struct TypeName { \
     T *items; \
-    size_t len; \
-    size_t cap; \
+    int len; \
+    int cap; \
 }; \
 \
 static inline TypeName* \
@@ -36,9 +36,9 @@ free##TypeName(TypeName *list) \
 } \
 \
 static inline void \
-FuncSig##Resz(TypeName *list, size_t nwsz) \
+FuncSig##Resz(TypeName *list, int nwsz) \
 { \
-    size_t oldsz = list->len; \
+    int oldsz = list->len; \
 \
     if (nwsz > list->cap) { \
         list->cap = nwsz; \
@@ -74,7 +74,7 @@ FuncSig##Peek(TypeName *list) \
 } \
 \
 static inline void \
-FuncSig##Ins(TypeName *list, size_t idx, T elm) \
+FuncSig##Ins(TypeName *list, int idx, T elm) \
 { \
     if (idx > list->len) return; \
     if (list->len == list->cap) \
@@ -91,7 +91,7 @@ FuncSig##Ins(TypeName *list, size_t idx, T elm) \
 } \
 \
 static inline void \
-FuncSig##Rm(TypeName *list, size_t idx) \
+FuncSig##Rm(TypeName *list, int idx) \
 { \
     if (list->len == 0 || idx >= list->len) return; \
     memmove( \

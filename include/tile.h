@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ctype.h>
 #include <stdio.h>
 
 typedef struct Buf Buf;
@@ -35,3 +36,17 @@ void freeTile(Tile *tile);
 
 void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode);
 void updateCursor(Tile *t);
+
+void hKeyDown(Tile *t);
+void jKeyDown(Tile *t);
+void kKeyDown(Tile *t);
+void lKeyDown(Tile *t);
+
+void mKeyDown(Tile *t);
+void MKeyDown(Tile *t);
+
+void iKeyDown(Tile *t);
+void IKeyDown(Tile *t);
+
+void oKeyDown(Tile *t);
+void OKeyDown(Tile *t);

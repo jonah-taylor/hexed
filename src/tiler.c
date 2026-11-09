@@ -18,10 +18,10 @@
 
 static int getTileIdxInCursorDir(Tiler *tiler, Dir dir);
 static int getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed);
-static size_t countTilesAtPoint(Tiler *tiler, int x, int y);
+static int countTilesAtPoint(Tiler *tiler, int x, int y);
 static void walkSelEdge(Tiler *tiler, Dir dir,
-        size_t *in[], size_t *i_len,
-        size_t *out[], size_t *o_len);
+        int *in[], int *i_len,
+        int *out[], int *o_len);
 
 Tiler*
 initTiler(Buf *buf)
@@ -53,7 +53,7 @@ initTiler(Buf *buf)
 void
 freeTiler(Tiler *tiler)
 {
-    size_t i;
+    int i;
     for (i = 0; i < tiler->ts_len; i++)
         freeTile(tiler->tiles[i]);
     free(tiler->tiles);
@@ -70,7 +70,7 @@ getSel(Tiler *tiler)
 void
 drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode)
 {
-    size_t i;
+    int i;
     for (i = 0; i < tiler->ts_len; i++)
         drawTileOnFrame(tiler->tiles[i], frame, mode);
 }
@@ -79,7 +79,7 @@ void
 newTile(Tiler *tiler, Dir dir, Buf *buf)
 {
     Tile *tile;
-    size_t x1, x2, y1, y2;
+    int x1, x2, y1, y2;
 
     tile = getSel(tiler);
     x1 = tile->rect.x1;
@@ -174,10 +174,10 @@ swapCursorDir(Tiler *tiler, Dir dir)
 void
 rmSel(Tiler *tiler)
 {
-    size_t i, dir;
+    int i, dir;
     Rect *o_rect, *i_rect;
-    size_t *inner, *outer;
-    size_t i_len, o_len;
+    int *inner, *outer;
+    int i_len, o_len;
 
     for (dir = 0; dir < 4; dir++) {
         walkSelEdge(tiler, dir, &inner, &i_len, &outer, &o_len);
@@ -224,10 +224,10 @@ rmSel(Tiler *tiler)
 void
 reszSel(Tiler *tiler, Dir dir, bool growing)
 {
-    size_t i;
+    int i;
     Rect *rect;
-    size_t *inner, *outer;
-    size_t i_len, o_len;
+    int *inner, *outer;
+    int i_len, o_len;
     int vel, min_x, min_y;
 
     vel = INC;
@@ -324,7 +324,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
 void
 rotTilesCW(Tiler *tiler)
 {
-    size_t i, t1, t2;
+    int i, t1, t2;
     Rect *rect;
     for (i = 0; i < tiler->ts_len; i++) {
         rect = &tiler->tiles[i]->rect;
@@ -342,7 +342,7 @@ getTileIdxInCursorDir(Tiler *tiler, Dir dir)
 {
     Tile *tile;
     Rect *rect;
-    size_t x, y;
+    int x, y;
 
     tile = getSel(tiler);
     x = fixedFromPercX(tile->rect.x1) + tile->curs.x;
@@ -371,7 +371,7 @@ static int
 getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed)
 {
     Rect *rect;
-    size_t i;
+    int i;
 
     for (i = 0; i < tiler->ts_len; i++) {
         rect = &tiler->tiles[i]->rect;
@@ -388,10 +388,10 @@ getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed)
     return -1;
 }
 
-static size_t
+static int
 countTilesAtPoint(Tiler *tiler, int x, int y)
 {
-    size_t count, i;
+    int count, i;
     Rect *rect;
 
     count = 0;
@@ -405,17 +405,17 @@ countTilesAtPoint(Tiler *tiler, int x, int y)
 }
 
 static void
-walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], size_t *o_len)
+walkSelEdge(Tiler *tiler, Dir dir, int *in[], int *i_len, int *out[], int *o_len)
 {
     int x, y;
     int shorter, longer;
-    size_t idx, tap;
-    size_t i_cap, o_cap;
+    int idx, tap;
+    int i_cap, o_cap;
 
-    *in = xmalloc(sizeof(size_t));
+    *in = xmalloc(sizeof(int));
     *i_len = 0;
     i_cap = 1;
-    *out = xmalloc(sizeof(size_t));
+    *out = xmalloc(sizeof(int));
     *o_len = 0;
     o_cap = 1;
 
@@ -481,7 +481,7 @@ walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], s
         if (idx + 1 != 0 && (*i_len == 0 || (*in)[*i_len - 1] != idx)) {
             if (*i_len >= i_cap) {
                 i_cap *= 2;
-                *in = xrealloc(*in, &i_cap, sizeof(size_t));
+                *in = xrealloc(*in, &i_cap, sizeof(int));
             }
             (*in)[(*i_len)++] = idx;
         }
@@ -503,7 +503,7 @@ walkSelEdge(Tiler *tiler, Dir dir, size_t *in[], size_t *i_len, size_t *out[], s
         if (idx + 1 != 0 && (*o_len == 0 || (*out)[*o_len - 1] != idx)) {
             if (*o_len >= o_cap) {
                 o_cap *= 2;
-                *out = xrealloc(*out, &o_cap, sizeof(size_t));
+                *out = xrealloc(*out, &o_cap, sizeof(*out));
             }
             (*out)[(*o_len)++] = idx;
         }

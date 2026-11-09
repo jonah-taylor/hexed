@@ -1,12 +1,13 @@
 #pragma once
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static inline void*
-xmalloc(size_t bytes)
+xmalloc(int bytes)
 {
     void *p;
 
@@ -19,7 +20,7 @@ xmalloc(size_t bytes)
 }
 
 static inline void*
-xcalloc(size_t bytes)
+xcalloc(int bytes)
 {
     void *p;
 
@@ -32,18 +33,18 @@ xcalloc(size_t bytes)
 }
 
 static inline void*
-xrealloc(void *ptr, size_t *cap, size_t t_sz)
+xrealloc(void *ptr, int *cap, int t_sz)
 {
     void *p;
 
-    if (*cap > SIZE_MAX / 2) {
+    if (*cap > INT_MAX / 2) {
         fprintf(stderr, "error: cap overflow (realloc)");
         exit(1);
     }
 
     *cap *= 2;
 
-    if (*cap > SIZE_MAX / t_sz) {
+    if (*cap > INT_MAX / t_sz) {
         fprintf(stderr, "error: cap * t_sz overflow (realloc)");
         exit(1);
     }
@@ -59,7 +60,7 @@ xrealloc(void *ptr, size_t *cap, size_t t_sz)
 static inline char*
 xstrdup(const char *s)
 {
-    size_t len;
+    int len;
     void *copy;
 
     len = strlen(s);

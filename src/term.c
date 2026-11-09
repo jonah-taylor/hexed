@@ -83,15 +83,15 @@ setColors(int fg, int bg)
 }
 
 void
-moveCursorTo(size_t row, size_t col)
+moveCursorTo(int row, int col)
 {
-    printf("\x1b[%zu;%zuH", row + 1, col + 1);
+    printf("\x1b[%d;%dH", row + 1, col + 1);
 }
 
 void
-drawStrAtLoc(size_t row, size_t col, const char *str)
+drawStrAtLoc(int row, int col, const char *str)
 {
-    printf("\x1b[%zu;%zuH%s", row + 1, col + 1, str);
+    printf("\x1b[%d;%dH%s", row + 1, col + 1, str);
 }
 
 Tab

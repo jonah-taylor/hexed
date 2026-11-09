@@ -27,7 +27,7 @@ initFrame()
 void
 freeFrame(Frame *frame)
 {
-    size_t i;
+    int i;
 
     assert(frame->curr->len == frame->prev->len);
 
@@ -45,8 +45,8 @@ freeFrame(Frame *frame)
 void
 reszFrame(Frame *frame, Tab tab)
 {
-    size_t r;
-    size_t old_row_len;
+    int r;
+    int old_row_len;
  
     old_row_len = frame->curr->len;
 
@@ -80,8 +80,8 @@ void
 setFrameCell(Frame *frame, int row, int col, Cell cell)
 {
     if (row < 0 || col < 0
-        || (size_t)row >= frame->curr->len
-        || (size_t)col >= frame->curr->items[row]->len)
+        || (int)row >= frame->curr->len
+        || (int)col >= frame->curr->items[row]->len)
         return;
     frame->curr->items[row]->items[col] = cell;
 }
@@ -89,7 +89,7 @@ setFrameCell(Frame *frame, int row, int col, Cell cell)
 void
 drawFrame(Frame *frame)
 {
-    size_t r, c;
+    int r, c;
 
     saveCursorPos();
     moveCursorTo(0, 0);
@@ -125,7 +125,7 @@ cellsEql(const Cell* a, const Cell* b)
 static void
 clearCurrFrame(Frame *frame)
 {
-    size_t r, c;
+    int r, c;
     for (r = 0; r < frame->curr->len; r++) {
         for (c = 0; c < frame->curr->items[r]->len; c++) {
             frame->curr->items[r]->items[c] = (Cell){
@@ -140,7 +140,7 @@ clearCurrFrame(Frame *frame)
 static void
 clearPrevFrame(Frame *frame)
 {
-    size_t r, c;
+    int r, c;
     for (r = 0; r < frame->prev->len; r++) {
         for (c = 0; c < frame->prev->items[r]->len; c++) {
             frame->prev->items[r]->items[c] = (Cell){0};

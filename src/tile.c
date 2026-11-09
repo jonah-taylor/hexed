@@ -12,12 +12,13 @@ DEF_LIST(LCh, char, lch)
 DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBkCv, BkCv, lbkcv)
 
+static void roundCursInBounds(Tile *t);
 inline static void setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c);
-inline static size_t calcNumLen(size_t lns);
-static void drawNumOnFrame(Tile *t, Frame *f, Mode m, int x, int y, size_t n);
-static void drawLnOnFrame(Tile *t, Frame *f, int x, int y, size_t ln_i);
+inline static int calcNumLen(int lns);
+static void drawNumOnFrame(Tile *t, Frame *f, Mode m, int x, int y, int n);
+static void drawLnOnFrame(Tile *t, Frame *f, int x, int y, int ln_i);
 static void drawBufNameOnFrame(Tile *t, Frame *f, int x, int y);
-static int calcLnHeight(Rect *r, size_t *ln_len, size_t *xpadn);
+static int calcLnHeight(Rect *r, int *ln_len, int *xpadn);
 
 Tile*
 initTile(Rect rect, Buf *buf)
@@ -47,8 +48,8 @@ void
 drawTileOnFrame(Tile *t, Frame *f, Mode m)
 {
     int ln_i, x, y;
+    int xpadn;
     Rect r;
-    size_t xpadn;
     LLCh *lns;
 
     lns = t->buf->lns;
@@ -65,7 +66,7 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
 
     // draw lines under cursor
     y = (r.y2 - r.y1) / 2;
-    for (ln_i = t->curs.ln + 1; (size_t)ln_i < lns->len && y < (r.y2 - r.y1) - 1; ln_i++) {
+    for (ln_i = t->curs.ln + 1; ln_i < lns->len && y < (r.y2 - r.y1) - 1; ln_i++) {
         y += calcLnHeight(&r, &lns->items[ln_i - 1]->len, &xpadn);
         x = xpadn;
         drawNumOnFrame(t, f, m, y, x, (ln_i - t->curs.ln));
@@ -103,7 +104,7 @@ updateCursor(Tile *t)
     int x, y;
     int ln_len, ch_wid, y_off;
     Rect r;
-    size_t xpadn;
+    int xpadn;
     LLCh *lns;
 
     lns = t->buf->lns;
@@ -130,6 +131,154 @@ updateCursor(Tile *t)
     );
 }
 
+void
+hKeyDown(Tile *t)
+{
+    t->curs.ch--;
+    roundCursInBounds(t);
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+jKeyDown(Tile *t)
+{
+    t->curs.ln++;
+    t->curs.ch = t->curs.ideal_ch;
+    roundCursInBounds(t);
+}
+
+void
+kKeyDown(Tile *t)
+{
+    t->curs.ln--;
+    t->curs.ch = t->curs.ideal_ch;
+    roundCursInBounds(t);
+}
+
+void
+lKeyDown(Tile *t)
+{
+    t->curs.ch++;
+    roundCursInBounds(t);
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+mKeyDown(Tile *t)
+{
+    int i;
+    for (i = 0; i < 10; i++)
+        jKeyDown(t);
+}
+
+void
+MKeyDown(Tile *t)
+{
+    int i;
+    for (i = 0; i < 10; i++)
+        kKeyDown(t);
+}
+
+void
+iKeyDown(Tile *t)
+{
+    LCh *ln;
+    char ch;
+
+    if (t->curs.ch == 0)
+        return;
+
+    ln = t->buf->lns->items[t->curs.ln];
+    ch = ln->items[t->curs.ch - 1];
+
+    if (isalnum(ch) || ch == '_') { // go to start of alphnum
+        while (t->curs.ch > 0) {
+            ch = ln->items[t->curs.ch - 1];
+            if (!isalnum(ch) && ch != '_')
+                break;
+            t->curs.ch--;
+        }
+    } else { // go to end of alphnum
+        while (t->curs.ch > 0) {
+            ch = ln->items[t->curs.ch - 1];
+            if (isalnum(ch) || ch == '_')
+                break;
+            t->curs.ch--;
+        }
+    }
+
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+IKeyDown(Tile *t)
+{
+    LCh *ln;
+    ln = t->buf->lns->items[t->curs.ln];
+    t->curs.ch = 0;
+    while (t->curs.ch < ln->len && ln->items[t->curs.ch] == ' ')
+        t->curs.ch++;
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+oKeyDown(Tile *t)
+{
+    LCh *ln;
+    char ch;
+
+    ln = t->buf->lns->items[t->curs.ln];
+    ch = ln->items[t->curs.ch];
+
+    if (t->curs.ch + 1 >= ln->len) {
+        t->curs.ch = ln->len;
+        t->curs.ideal_ch = t->curs.ch;
+        return;
+    }
+
+    if (isalnum(ch) || ch == '_') { // go to last alphnum
+        while (t->curs.ch < ln->len) {
+            ch = ln->items[t->curs.ch];
+            if (!isalnum(ch) && ch != '_')
+                break;
+            t->curs.ch++;
+        }
+    } else { // go to first alphnum
+        while (t->curs.ch < ln->len) {
+            ch = ln->items[t->curs.ch];
+            if (isalnum(ch) || ch == '_')
+                break;
+            t->curs.ch++;
+        }
+    }
+
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+OKeyDown(Tile *t)
+{
+    t->curs.ch = t->buf->lns->items[t->curs.ln]->len;
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+static void
+roundCursInBounds(Tile *t)
+{
+    LLCh *lns;
+    lns = t->buf->lns;
+
+    if (t->curs.ln >= lns->len)
+        t->curs.ln = lns->len - 1;
+    if (t->curs.ln < 0)
+        t->curs.ln = 0;
+
+    if (t->curs.ch >= lns->items[t->curs.ln]->len)
+        t->curs.ch = lns->items[t->curs.ln]->len;
+    if (t->curs.ch < 0)
+        t->curs.ch = 0;
+}
+
 inline static void
 setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c)
 {
@@ -139,10 +288,10 @@ setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c)
     setFrameCell(f, (r->y1 + *y), (r->x1 + *x), c);
 }
 
-static size_t
-calcNumLen(size_t lns)
+static int
+calcNumLen(int lns)
 {
-    size_t xpadn = 0;
+    int xpadn = 0;
     while (lns > 0) {
         lns /= 10;
         xpadn++;
@@ -152,9 +301,9 @@ calcNumLen(size_t lns)
 }
 
 static void
-drawLnOnFrame(Tile *t, Frame *f, int y, int x, size_t ln_i)
+drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
 {
-    size_t ch_i, xpadn;
+    int ch_i, xpadn;
     Rect r;
     LLCh *lns;
     char ch;
@@ -182,7 +331,7 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, size_t ln_i)
 }
 
 static void
-drawNumOnFrame(Tile *t, Frame *f, Mode mode, int y, int x, size_t num)
+drawNumOnFrame(Tile *t, Frame *f, Mode mode, int y, int x, int num)
 {
     Rect r;
     char ch;
@@ -205,14 +354,14 @@ static void
 drawBufNameOnFrame(Tile *t, Frame *f, int y, int x)
 {
     char ch, *str;
-    size_t ch_i;
+    int ch_i;
     Rect r;
 
     r = fixedFromPercRect(t->rect);
 
     // draw tile name
     str = t->buf->name;
-    for (ch_i = 0; ch_i < strlen(str); ch_i++) {
+    for (ch_i = 0; ch_i < (int)strlen(str); ch_i++) {
         ch = str[ch_i];
         setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
         x++;
@@ -220,7 +369,7 @@ drawBufNameOnFrame(Tile *t, Frame *f, int y, int x)
 }
 
 static int
-calcLnHeight(Rect *r, size_t *ln_len, size_t *xpadn)
+calcLnHeight(Rect *r, int *ln_len, int *xpadn)
 {
     int ch_wid;
     ch_wid = ((r->x2 - 1) - r->x1 - (*xpadn + 2));

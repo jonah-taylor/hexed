@@ -34,8 +34,8 @@ void enterAltScreen();
 void exitAltScreen();
 
 void setColors(int fg, int bg);
-void moveCursorTo(size_t row, size_t col);
-void drawStrAtLoc(size_t row, size_t col, const char *str);
+void moveCursorTo(int row, int col);
+void drawStrAtLoc(int row, int col, const char *str);
 
 Tab getTermSz();
 

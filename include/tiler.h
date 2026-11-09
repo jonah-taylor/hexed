@@ -15,8 +15,8 @@ typedef struct Tiler Tiler;
 struct Tiler
 {
     Tile **tiles;
-    size_t ts_len, ts_cap;
-    size_t sel_idx;
+    int ts_len, ts_cap;
+    int sel_idx;
 };
 
 Tiler *initTiler(Buf *buf);
