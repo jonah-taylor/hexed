@@ -74,7 +74,7 @@ exitAltScreen()
 void
 setColors(int fg, int bg)
 {
-    if (fg < 0 || bg < 0)
+    if (fg <= 0 || bg <= 0)
         printf("\x1b[0m");
     if (fg > 0)
         printf("\x1b[%dm", fg);

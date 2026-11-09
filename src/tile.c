@@ -13,7 +13,7 @@ DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBkCv, BkCv, lbkcv)
 
 inline static void setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c);
-inline static size_t calcXPadN(long lns);
+inline static size_t calcNumLen(size_t lns);
 static void drawNumOnFrame(Tile *t, Frame *f, Mode m, int x, int y, size_t n);
 static void drawLnOnFrame(Tile *t, Frame *f, int x, int y, size_t ln_i);
 static void drawBufNameOnFrame(Tile *t, Frame *f, int x, int y);
@@ -53,18 +53,27 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
 
     lns = t->buf->lns;
     r = fixedFromPercRect(t->rect);
-    xpadn = calcXPadN(lns->len);
+    xpadn = calcNumLen(lns->len);
+
+    // draw line at cursor
+    y = (r.y2 - r.y1) / 2;
+    ln_i = t->curs.ln;
+    x = calcNumLen(ln_i + 1);
+    drawNumOnFrame(t, f, m, y, x, (ln_i + 1));
+    x = xpadn + 2;
+    drawLnOnFrame(t, f, y, x, ln_i);
 
     // draw lines under cursor
     y = (r.y2 - r.y1) / 2;
-    for (ln_i = t->curs.ln; (size_t)ln_i < lns->len && y < (r.y2 - r.y1) - 1; ln_i++) {
+    for (ln_i = t->curs.ln + 1; (size_t)ln_i < lns->len && y < (r.y2 - r.y1) - 1; ln_i++) {
+        y += calcLnHeight(&r, &lns->items[ln_i - 1]->len, &xpadn);
         x = xpadn;
-        drawNumOnFrame(t, f, m, y, x, (ln_i + 1));
+        drawNumOnFrame(t, f, m, y, x, (ln_i - t->curs.ln));
         x = xpadn + 2;
         drawLnOnFrame(t, f, y, x, ln_i);
-        y += calcLnHeight(&r, &lns->items[ln_i]->len, &xpadn);
     }
-
+    // ~ filler
+    y++;
     for (x = 0; y < r.y2 - 1; y++)
         setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = 90});
 
@@ -73,11 +82,12 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
     for (ln_i = t->curs.ln - 1; ln_i >= 0 && y >= 0; ln_i--) {
         y -= calcLnHeight(&r, &lns->items[ln_i]->len, &xpadn);
         x = xpadn;
-        drawNumOnFrame(t, f, m, y, x, (ln_i + 1));
+        drawNumOnFrame(t, f, m, y, x, (t->curs.ln - ln_i));
         x = xpadn + 2;
         drawLnOnFrame(t, f, y, x, ln_i);
     }
 
+    // ~ filler
     y--;
     for (x = 0; y >= 0; y--)
         setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = 90});
@@ -98,7 +108,7 @@ updateCursor(Tile *t)
 
     lns = t->buf->lns;
     r = fixedFromPercRect(t->rect);
-    xpadn = calcXPadN(lns->len);
+    xpadn = calcNumLen(lns->len);
     ln_len = t->curs.ch + 1;
 
     y = (r.y2 - r.y1) / 2;
@@ -130,7 +140,7 @@ setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c)
 }
 
 static size_t
-calcXPadN(long lns)
+calcNumLen(size_t lns)
 {
     size_t xpadn = 0;
     while (lns > 0) {
@@ -160,7 +170,7 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, size_t ln_i)
         if (ch == ' ')
             setTileCell(&r, f, &y, &x, (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0}, .fg = 90});
         else
-            setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}, .fg = -1});
+            setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
         x++;
 
         // wrap at tile width
@@ -184,7 +194,7 @@ drawNumOnFrame(Tile *t, Frame *f, Mode mode, int y, int x, size_t num)
         setTileCell(&r, f, &y, &x,
             (Cell){
                 .str = {ch,'\0'},
-                .fg = (mode == RESIZING) ? 31 : -1,
+                .fg = (mode == RESIZING) ? 31 : 0,
             });
         num /= 10;
         x--;
@@ -204,7 +214,7 @@ drawBufNameOnFrame(Tile *t, Frame *f, int y, int x)
     str = t->buf->name;
     for (ch_i = 0; ch_i < strlen(str); ch_i++) {
         ch = str[ch_i];
-        setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}, .fg = -1});
+        setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
         x++;
     }
 }

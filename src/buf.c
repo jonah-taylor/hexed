@@ -49,7 +49,6 @@ loadFile(Buf *buf, const char *fname)
 
     row = 0;
     for (;;) {
-
         llchPush(buf->lns, initLCh());
 
         while ((ch = fgetc(fp)) != '\n' && ch != EOF)
