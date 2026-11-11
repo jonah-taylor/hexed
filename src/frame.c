@@ -90,13 +90,34 @@ void
 drawFrame(Frame *frame)
 {
     int r, c;
+    Cell *curr_cell, *prev_cell;
+    // Cell *above_cell, *below_cell;
+    // Cell bar_cell, empty_cell;
+
+    // bar_cell = (Cell){.str = {(char)0xE2, (char)0x94, (char)0x82, 0}, .fg = 90};
+    // empty_cell = (Cell){0};
 
     saveCursorPos();
     moveCursorTo(0, 0);
     for (r = 0; r < frame->curr->len; r++) {
         for (c = 0; c < frame->curr->items[r]->len; c++) {
-            Cell *curr_cell = &frame->curr->items[r]->items[c];
-            Cell *prev_cell = &frame->prev->items[r]->items[c];
+            curr_cell = &frame->curr->items[r]->items[c];
+            prev_cell = &frame->prev->items[r]->items[c];
+
+            // handle | above and below
+            // if (r > 0)
+            //     above_cell = &frame->curr->items[r - 1]->items[c];
+            // else
+            //     above_cell = &empty_cell;
+            // if (r < frame->curr->len - 1)
+            //     below_cell = &frame->curr->items[r + 1]->items[c];
+            // else
+            //     below_cell = &empty_cell;
+
+            // if (cellsEql(above_cell, below_cell))
+            // if (cellsEql(above_cell, &bar_cell))
+            // if (curr_cell->str[0] == ' ')
+            //     *curr_cell = bar_cell;
 
             if (cellsEql(curr_cell, prev_cell))
                 continue;

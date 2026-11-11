@@ -37,16 +37,36 @@ void freeTile(Tile *tile);
 void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode);
 void updateCursor(Tile *t);
 
-void hKeyDown(Tile *t);
-void jKeyDown(Tile *t);
-void kKeyDown(Tile *t);
-void lKeyDown(Tile *t);
+void typeChar(Tile *t, char ch);
+void typeEnter(Tile *t);
 
-void mKeyDown(Tile *t);
-void MKeyDown(Tile *t);
+void rmLn(Tile *t);
+void rmLnBeforeCurs(Tile *t);
+void rmLnAfterCurs(Tile *t);
+void rmLnBelow(Tile *t);
+void rmLnAbove(Tile *t);
 
-void iKeyDown(Tile *t);
-void IKeyDown(Tile *t);
+void typeBksp(Tile *t);
+void typeTab(Tile *t);
 
-void oKeyDown(Tile *t);
-void OKeyDown(Tile *t);
+void mvLeft(Tile *t);
+void mvDown(Tile *t);
+void mvUp(Tile *t);
+void mvRight(Tile *t);
+
+void jmpDown(Tile *t, int x);
+void jmpUp(Tile *t, int x);
+
+void newLnBelow(Tile *t);
+void newLnAbove(Tile *t);
+
+void mvFastLeft(Tile *t);
+void mvFullLeft(Tile *t);
+
+void mvFastRight(Tile *t);
+void mvFullRight(Tile *t);
+
+void rmNextCh(Tile *t);
+
+void unindentLnFront(Tile *t);
+void indentLnFront(Tile *t);

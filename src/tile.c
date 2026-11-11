@@ -132,7 +132,180 @@ updateCursor(Tile *t)
 }
 
 void
-hKeyDown(Tile *t)
+typeChar(Tile *t, char ch)
+{
+    LCh *ln;
+
+    ln = t->buf->lns->items[t->curs.ln];
+
+    lchIns(ln, t->curs.ch, ch);
+    t->curs.ch++;
+    t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+rmLn(Tile *t)
+{
+    LLCh *lns;
+    LCh *ln;
+
+    lns = t->buf->lns;
+    ln = lns->items[t->curs.ln];
+
+    if (t->curs.ln == 0 && ln->len == 1) {
+        ln->len = 0;
+        t->curs.ch = 0;
+        return;
+    }
+
+    freeLCh(lns->items[t->curs.ln]);
+    llchRm(lns, t->curs.ln);
+
+    t->curs.ch = t->curs.ideal_ch;
+    roundCursInBounds(t);
+}
+
+void
+rmLnBeforeCurs(Tile *t)
+{
+    while (t->curs.ch != 0)
+        typeBksp(t);
+}
+
+void
+rmLnAfterCurs(Tile *t)
+{
+    LCh *ln;
+    ln = t->buf->lns->items[t->curs.ln];
+    while (t->curs.ch != ln->len)
+        rmNextCh(t);
+}
+
+void
+rmLnBelow(Tile *t)
+{
+    LLCh *lns;
+    lns = t->buf->lns;
+    if (t->curs.ln == lns->len - 1)
+        return;
+
+    mvDown(t);
+    rmLn(t);
+    mvUp(t);
+}
+
+void
+rmLnAbove(Tile *t)
+{
+    if (t->curs.ln == 0)
+        return;
+
+    mvUp(t);
+    rmLn(t);
+}
+
+void
+typeEnter(Tile *t)
+{
+    LLCh *lns;
+    LCh *ln, *nln;
+    lns = t->buf->lns;
+
+    llchIns(lns, t->curs.ln + 1, initLCh());
+    ln = lns->items[t->curs.ln];
+    nln = lns->items[t->curs.ln + 1];
+
+    lchResz(nln, ln->len - t->curs.ch);
+    memmove(nln->items, (ln->items + t->curs.ch), nln->len);
+    ln->len = t->curs.ch;
+
+    t->curs.ln++;
+    t->curs.ch = 0;
+}
+
+void
+typeBksp(Tile *t)
+{
+    LLCh *lns;
+    LCh *ln, *pln;
+
+    if (t->curs.ch == 0 && t->curs.ln == 0)
+        return;
+
+    lns = t->buf->lns;
+    ln = lns->items[t->curs.ln];
+
+    if (t->curs.ln > 0)
+        pln = lns->items[t->curs.ln - 1];
+
+    if (t->curs.ch == 0 && t->curs.ln > 0) {
+        t->curs.ch = pln->len;
+        t->curs.ln--;
+        t->curs.ideal_ch = t->curs.ch;
+        lchResz(pln, pln->len + ln->len);
+        memmove((pln->items + t->curs.ch), ln->items, ln->len);
+        freeLCh(lns->items[t->curs.ln + 1]);
+        llchRm(lns, t->curs.ln + 1);
+        return;
+    }
+
+    if (t->curs.ch > 3
+        && strncmp(ln->items + t->curs.ch - 4, "    ", 4) == 0) {
+        lchRm(ln, t->curs.ch - 1);
+        t->curs.ch--;
+        while (t->curs.ch % 4 != 0) {
+            lchRm(ln, t->curs.ch - 1);
+            t->curs.ch--;
+        }
+        return;
+    }
+
+    lchRm(ln, t->curs.ch - 1);
+    t->curs.ch--;
+}
+
+void
+typeTab(Tile *t)
+{
+    LCh *ln;
+
+    ln = t->buf->lns->items[t->curs.ln];
+    do {
+        lchIns(ln, t->curs.ch, ' ');
+        t->curs.ch++;
+    } while (t->curs.ch % 4 != 0);
+}
+
+void
+unindentLnFront(Tile *t)
+{
+    int i;
+    LCh *ln;
+
+    ln = t->buf->lns->items[t->curs.ln];
+
+    for (i = 0; i < 4; i++) {
+        if (ln->items[0] != ' ')
+            break;
+        lchRm(ln, 0);
+    }
+}
+
+void
+indentLnFront(Tile *t)
+{
+
+    int i;
+    LCh *ln;
+
+    ln = t->buf->lns->items[t->curs.ln];
+
+    for (i = 0; i < 4; i++)
+        lchIns(ln, 0, ' ');
+}
+
+void
+mvLeft(Tile *t)
 {
     t->curs.ch--;
     roundCursInBounds(t);
@@ -140,7 +313,7 @@ hKeyDown(Tile *t)
 }
 
 void
-jKeyDown(Tile *t)
+mvDown(Tile *t)
 {
     t->curs.ln++;
     t->curs.ch = t->curs.ideal_ch;
@@ -148,7 +321,7 @@ jKeyDown(Tile *t)
 }
 
 void
-kKeyDown(Tile *t)
+mvUp(Tile *t)
 {
     t->curs.ln--;
     t->curs.ch = t->curs.ideal_ch;
@@ -156,7 +329,7 @@ kKeyDown(Tile *t)
 }
 
 void
-lKeyDown(Tile *t)
+mvRight(Tile *t)
 {
     t->curs.ch++;
     roundCursInBounds(t);
@@ -164,23 +337,44 @@ lKeyDown(Tile *t)
 }
 
 void
-mKeyDown(Tile *t)
+jmpDown(Tile *t, int x)
 {
     int i;
-    for (i = 0; i < 10; i++)
-        jKeyDown(t);
+    for (i = 0; i < x; i++)
+        mvDown(t);
 }
 
 void
-MKeyDown(Tile *t)
+jmpUp(Tile *t, int x)
 {
     int i;
-    for (i = 0; i < 10; i++)
-        kKeyDown(t);
+    for (i = 0; i < x; i++)
+        mvUp(t);
 }
 
 void
-iKeyDown(Tile *t)
+newLnBelow(Tile *t)
+{
+    LLCh *lns;
+
+    lns = t->buf->lns;
+    llchIns(lns, t->curs.ln + 1, initLCh());
+    t->curs.ln++;
+    t->curs.ch = 0;
+}
+
+void
+newLnAbove(Tile *t)
+{
+    LLCh *lns;
+
+    lns = t->buf->lns;
+    llchIns(lns, t->curs.ln, initLCh());
+    t->curs.ch = 0;
+}
+
+void
+mvFastLeft(Tile *t)
 {
     LCh *ln;
     char ch;
@@ -211,7 +405,7 @@ iKeyDown(Tile *t)
 }
 
 void
-IKeyDown(Tile *t)
+mvFullLeft(Tile *t)
 {
     LCh *ln;
     ln = t->buf->lns->items[t->curs.ln];
@@ -222,7 +416,7 @@ IKeyDown(Tile *t)
 }
 
 void
-oKeyDown(Tile *t)
+mvFastRight(Tile *t)
 {
     LCh *ln;
     char ch;
@@ -256,10 +450,20 @@ oKeyDown(Tile *t)
 }
 
 void
-OKeyDown(Tile *t)
+mvFullRight(Tile *t)
 {
     t->curs.ch = t->buf->lns->items[t->curs.ln]->len;
     t->curs.ideal_ch = t->curs.ch;
+}
+
+void
+rmNextCh(Tile *t)
+{
+    LCh *ln;
+    ln = t->buf->lns->items[t->curs.ln];
+    if (ln->len == 0 || t->curs.ch == ln->len) return;
+
+    lchRm(ln, t->curs.ch);
 }
 
 static void
@@ -308,6 +512,11 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
     LLCh *lns;
     char ch;
 
+    Cell bar, dot;
+
+    bar = (Cell){.str = {(char)0xE2, (char)0x94, (char)0x82, 0}, .fg = 90};
+    dot = (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0}, .fg = 90};
+
     r = fixedFromPercRect(t->rect);
 
     lns = t->buf->lns;
@@ -317,9 +526,15 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
     for (ch_i = 0; ch_i < lns->items[ln_i]->len; ch_i++) {
         ch = lns->items[ln_i]->items[ch_i];
         if (ch == ' ')
-            setTileCell(&r, f, &y, &x, (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0}, .fg = 90});
+            if (ch_i % 4 == 0
+                    && ch_i + 3 < lns->items[ln_i]->len
+                    && strncmp(lns->items[ln_i]->items + ch_i, "    ", 4) == 0)
+                setTileCell(&r, f, &y, &x, bar);
+            else
+                setTileCell(&r, f, &y, &x, dot);
         else
             setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
+
         x++;
 
         // wrap at tile width
