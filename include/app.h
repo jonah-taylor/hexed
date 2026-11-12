@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 
 typedef struct LBuf LBuf;

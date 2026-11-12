@@ -9,7 +9,6 @@ DEF_LIST(LLCell, LCell*, llc)
 
 static bool cellsEql(const Cell* a, const Cell* b);
 static void clearCurrFrame(Frame *frame);
-static void clearPrevFrame(Frame *frame);
 
 Frame*
 initFrame()
@@ -158,7 +157,7 @@ clearCurrFrame(Frame *frame)
     }
 }
 
-static void
+void
 clearPrevFrame(Frame *frame)
 {
     int r, c;

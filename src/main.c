@@ -9,10 +9,12 @@
 #include "utils/list.h"
 #include "utils/xmem.h"
 
+#include <signal.h>
+
 DEF_LIST(LBuf, Buf*, lb)
 
 static void freeApp(App *app);
-static int handleKey(char key, App *app);
+static int handleKey(App *app, char key);
 
 int
 main(int argc, char *argv[])
@@ -51,7 +53,7 @@ main(int argc, char *argv[])
 
     for (;;) {
         char key = getch();
-        if (handleKey(key, app)) break;
+        if (handleKey(app, key)) break;
 
         reszFrame(app->frame, getTermSz());
         drawTilesOnFrame(app->tiler, app->frame, app->mode);
@@ -84,7 +86,7 @@ freeApp(App *app)
 }
 
 static int
-handleKey(char key, App *app)
+handleKey(App *app, char key)
 {
     Tile *curr_tile;
     char str[5];
@@ -149,6 +151,7 @@ handleKey(char key, App *app)
         case 'l': rmLnAfterCurs(curr_tile); break;
         case 'j': rmLnBelow(curr_tile); break;
         case 'k': rmLnAbove(curr_tile); break;
+        default: return handleKey(app, key);
         }
         break;
     case 'D': rmSel(app->tiler); break;
@@ -199,12 +202,17 @@ handleKey(char key, App *app)
 
     case 'q':
         key = getch();
-        if (key == 'q')
-            return 1;
-        break;
+        switch (key) {
+        case 'q': return 1;
+        default: return handleKey(app, key);
+        }
 
     case 'R': app->mode = (app->mode == RESIZING) ? EDITING : RESIZING; break;
 
+    case 's':
+        key = getch();
+        swapNextCh(curr_tile, key);
+        break;
     case 'S':
         key = getch();
         switch(key) {
@@ -212,6 +220,7 @@ handleKey(char key, App *app)
         case 'j': swapCursorDir(app->tiler, DOWN); break;
         case 'k': swapCursorDir(app->tiler, UP); break;
         case 'l': swapCursorDir(app->tiler, RIGHT); break;
+        default: return handleKey(app, key);
         }
         break;
 
@@ -222,6 +231,7 @@ handleKey(char key, App *app)
         case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]); break;
         case 'k': newTile(app->tiler, UP, app->lbufs->items[0]); break;
         case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); break;
+        default: return handleKey(app, key);
         }
         break;
 
@@ -229,6 +239,18 @@ handleKey(char key, App *app)
 
     case '<': unindentLnFront(curr_tile); break;
     case '>': indentLnFront(curr_tile); break;
+
+    case 0x1A: // CTRL+Z
+        exitAltScreen();
+        fflush(stdout);
+
+        disableRaw();
+        if (kill(0, SIGTSTP) != 0)
+            return -1;
+        enableRaw();
+
+        enterAltScreen();
+        clearPrevFrame(app->frame);
     }
 
     return 0;
