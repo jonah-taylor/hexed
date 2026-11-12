@@ -29,9 +29,8 @@ initTile(Rect rect, Buf *buf)
     *tile = (Tile){
         .buf = buf,
         .curs = (Cursor){0},
-        .lBkCv = initLBkCv(), // TODO
+        .lbkcv = initLBkCv(),
         .rect = rect,
-        .ttype = buf_tt,
     };
 
     return tile;
@@ -40,8 +39,56 @@ initTile(Rect rect, Buf *buf)
 void
 freeTile(Tile *tile)
 {
-    freeLBkCv(tile->lBkCv);
+    freeLBkCv(tile->lbkcv);
     free(tile);
+}
+
+void
+saveCursToBkCv(Tile *t)
+{
+    int i;
+    BkCv *oth;
+    BkCv bkcv;
+
+    bkcv = (BkCv){
+        .buf = t->buf,
+        .curs = t->curs,
+    };
+
+    for (i = 0; i < t->lbkcv->len; i++) {
+        oth = &t->lbkcv->items[i];
+        if (bkcv.buf == oth->buf) {
+            oth->curs = bkcv.curs;
+            return;
+        }
+    }
+    lbkcvPush(t->lbkcv, bkcv);
+}
+
+Cursor
+getCursFromBkCv(Tile *t)
+{
+    int i;
+    BkCv *oth;
+    for (i = 0; i < t->lbkcv->len; i++) {
+        oth = &t->lbkcv->items[i];
+        if (t->buf == oth->buf) {
+            return oth->curs;
+        }
+    }
+    return (Cursor){0};
+}
+
+void
+rmBkCv(Tile *t, Buf *buf)
+{
+    int i;
+    BkCv *oth;
+    for (i = 0; i < t->lbkcv->len; i++) {
+        oth = &t->lbkcv->items[i];
+        if (buf == oth->buf)
+            lbkcvRm(t->lbkcv, i);
+    }
 }
 
 void
@@ -51,6 +98,8 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
     int xpadn;
     Rect r;
     LLCh *lns;
+
+    roundCursInBounds(t);
 
     lns = t->buf->lns;
     r = fixedFromPercRect(t->rect);
@@ -75,7 +124,7 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
     }
     // ~ filler
     y++;
-    for (x = 0; y < r.y2 - 1; y++)
+    for (x = 0; y < (r.y2 - r.y1) - 1; y++)
         setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = 90});
 
     // draw lines above cursor
@@ -152,7 +201,7 @@ rmLn(Tile *t)
     lns = t->buf->lns;
     ln = lns->items[t->curs.ln];
 
-    if (t->curs.ln == 0 && ln->len == 1) {
+    if (t->curs.ln == 0 && lns->len == 1) {
         ln->len = 0;
         t->curs.ch = 0;
         return;
@@ -204,12 +253,15 @@ rmLnAbove(Tile *t)
     rmLn(t);
 }
 
-void
+int
 typeEnter(Tile *t)
 {
     LLCh *lns;
     LCh *ln, *nln;
     lns = t->buf->lns;
+
+    if (strncmp(t->buf->name, "bufslist", 8) == 0)
+        return t->curs.ln + 1;
 
     llchIns(lns, t->curs.ln + 1, initLCh());
     ln = lns->items[t->curs.ln];
@@ -221,6 +273,8 @@ typeEnter(Tile *t)
 
     t->curs.ln++;
     t->curs.ch = 0;
+
+    return 0;
 }
 
 void
@@ -288,6 +342,7 @@ unindentLnFront(Tile *t)
         if (ln->items[0] != ' ')
             break;
         lchRm(ln, 0);
+        mvLeft(t);
     }
 }
 
@@ -300,8 +355,10 @@ indentLnFront(Tile *t)
 
     ln = t->buf->lns->items[t->curs.ln];
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++) {
         lchIns(ln, 0, ' ');
+        mvRight(t);
+    }
 }
 
 void
@@ -526,6 +583,7 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
     dot = (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0}, .fg = 90};
 
     r = fixedFromPercRect(t->rect);
+    r.y2--;
 
     lns = t->buf->lns;
     xpadn = x;
@@ -560,6 +618,7 @@ drawNumOnFrame(Tile *t, Frame *f, Mode mode, int y, int x, int num)
     char ch;
 
     r = fixedFromPercRect(t->rect);
+    r.y2--;
 
     while (num > 0) {
         ch = ('0' + (num % 10));

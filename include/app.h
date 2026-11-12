@@ -20,4 +20,5 @@ struct App {
     Frame *frame;
     Mode mode;
     Tiler *tiler;
+    int refresh_bufs;
 };

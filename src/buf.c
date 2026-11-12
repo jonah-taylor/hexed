@@ -4,6 +4,9 @@
 
 DEF_LIST(LCh, char, lch)
 DEF_LIST(LLCh, LCh*, llch)
+DEF_LIST(LBuf, Buf*, lb)
+
+static void wipeBuf(Buf *buf, const char *bname);
 
 Buf*
 initBuf(const char *tmp_name)
@@ -59,3 +62,36 @@ loadFile(Buf *buf, const char *fname)
     }
 }
 
+void
+loadBufList(Buf *buf, LBuf *lbuf)
+{
+    int buf_i, b_nm_i;
+    char *bname;
+
+    wipeBuf(buf, "bufslist");
+
+    for (buf_i = 1; buf_i < lbuf->len; buf_i++) {
+        llchPush(buf->lns, initLCh());
+        bname = lbuf->items[buf_i]->name;
+        for (b_nm_i = 0; b_nm_i < (int)strlen(bname); b_nm_i++)
+            lchPush(buf->lns->items[buf_i - 1], bname[b_nm_i]);
+    }
+}
+
+static void
+wipeBuf(Buf *buf, const char *bname)
+{
+    int i;
+
+    free(buf->name);
+
+    for (i = 0; i < buf->lns->len; i++) {
+        freeLCh(buf->lns->items[i]);
+    }
+    freeLLCh(buf->lns);
+
+    *buf = (Buf){
+        .name = xstrdup(bname),
+        .lns = initLLCh(),
+    };
+}

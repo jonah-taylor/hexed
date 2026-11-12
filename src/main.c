@@ -30,10 +30,14 @@ main(int argc, char *argv[])
         .frame = initFrame(),
         .mode = EDITING,
         .tiler = 0,
+        .refresh_bufs = 1,
     };
 
-    lbPush(app->lbufs, initBuf("empty"));
-    loadFile(app->lbufs->items[0], "test.txt");
+    lbPush(app->lbufs, initBuf("buflist"));
+    lbPush(app->lbufs, initBuf(""));
+    loadFile(app->lbufs->items[1], "test.txt");
+    loadBufList(app->lbufs->items[0], app->lbufs);
+    // Add loadBufList flag for refreshing the buf list each loop
 
     app->tiler = initTiler(app->lbufs->items[0]);
 
@@ -54,6 +58,11 @@ main(int argc, char *argv[])
     for (;;) {
         char key = getch();
         if (handleKey(app, key)) break;
+
+        if (app->refresh_bufs) {
+            loadBufList(app->lbufs->items[0], app->lbufs);
+            app->refresh_bufs = 0;
+        }
 
         reszFrame(app->frame, getTermSz());
         drawTilesOnFrame(app->tiler, app->frame, app->mode);
@@ -89,6 +98,7 @@ static int
 handleKey(App *app, char key)
 {
     Tile *curr_tile;
+    int num;
     char str[5];
 
     curr_tile = getSel(app->tiler);
@@ -111,7 +121,10 @@ handleKey(App *app, char key)
         return 0;
     case '\r':
     case '\n':
-        typeEnter(curr_tile);
+        if ((num = typeEnter(curr_tile))) {
+            curr_tile->buf = app->lbufs->items[num];
+            curr_tile->curs = getCursFromBkCv(curr_tile);
+        }
         return 0;
     case '\x1b': // arrow keys
         if (read(STDIN_FILENO, &key, 1) != 1 || key != '[')
@@ -141,6 +154,13 @@ handleKey(App *app, char key)
 
     // editting/resizing
     switch(key) {
+
+    case 'b':
+        app->refresh_bufs = 1;
+        saveCursToBkCv(curr_tile);
+        curr_tile->buf = app->lbufs->items[0];
+        curr_tile->curs = getCursFromBkCv(curr_tile);
+        break;
 
     case 'C': rotTilesCW(app->tiler); break;
     case 'd':
