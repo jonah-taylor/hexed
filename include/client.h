@@ -1,3 +1,3 @@
 #pragma once
 
-void client(int argc, char *argv[]);
+void client(int port, int paths_len, char *paths[]);

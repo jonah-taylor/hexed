@@ -260,7 +260,7 @@ typeEnter(Tile *t)
     LCh *ln, *nln;
     lns = t->buf->lns;
 
-    if (strlen(t->buf->name) > 0 && t->buf->name[0] == '/')
+    if (strncmp(t->buf->name, "PORT ", 5) == 0)
         return t->curs.ln + 1;
 
     llchIns(lns, t->curs.ln + 1, initLCh());

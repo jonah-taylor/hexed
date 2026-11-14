@@ -23,10 +23,18 @@ main(int argc, char *argv[])
 {
     App *app;
     char lbufs_name[64];
+    int i, isnum_arg1;
 
     if (argc > 1) {
-        client(argc, argv);
-        return 0;
+        isnum_arg1 = 1;
+        for (i = 0; i < (int)strlen(argv[1]); i++) {
+            if (!isdigit(argv[1][i]))
+                isnum_arg1 = 0;
+        }
+        if (isnum_arg1) {
+            client(atoi(argv[1]), argc - 2, (argv + 2));
+            return 0;
+        }
     }
 
     app = xmalloc(sizeof(*app));
@@ -46,31 +54,22 @@ main(int argc, char *argv[])
         return 0;
     }
 
-    snprintf(lbufs_name, sizeof(lbufs_name), "/PORT=%d", app->port);
-
+    snprintf(lbufs_name, sizeof(lbufs_name), "PORT %d", app->port);
     lbPush(app->lbufs, initBuf(lbufs_name));
-    loadBufList(app->lbufs->items[0], app->lbufs);
 
     app->tiler = initTiler(app->lbufs->items[0]);
 
+    if (argc > 1)
+        client(app->port, argc - 1, (argv + 1));
 
     if (enableRaw()) {
         perror("raw mode");
         exit(1);
     }
-
     enterAltScreen();
     clearScreen();
 
-    reszFrame(app->frame, getTermSz());
-    drawTilesOnFrame(app->tiler, app->frame, app->mode);
-    drawFrame(app->frame);
-    updateCursor(getSel(app->tiler));
-    fflush(stdout);
-
     for (;;) {
-        char key = getch();
-        if (handleKey(app, key)) break;
 
         flushServer(app);
 
@@ -85,6 +84,9 @@ main(int argc, char *argv[])
         drawFrame(app->frame);
         updateCursor(getSel(app->tiler));
         fflush(stdout);
+
+        char key = getch();
+        if (handleKey(app, key)) break;
     }
 
     freeApp(app);

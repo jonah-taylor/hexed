@@ -70,6 +70,7 @@ flushServer(App *app)
 
         lbPush(app->lbufs, initBuf(""));
         loadFile(app->lbufs->items[app->lbufs->len - 1], buf);
+        app->refresh_bufs = 1;
     }
 }
 

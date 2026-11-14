@@ -15,10 +15,10 @@ static void send_abspath(int fd, struct sockaddr_in dest,
         const char *cwd, const char *rel_path);
 
 void
-client(int argc, char *argv[])
+client(int port, int paths_len, char *paths[])
 {
     struct sockaddr_in dest;
-    int fd, port, i;
+    int fd, i;
     char cwd[4096];
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -27,16 +27,6 @@ client(int argc, char *argv[])
         fprintf(stderr, "socket");
         return;
     }
-
-    for (i = 0; i < (int)strlen(argv[1]); i++) {
-        if (!isdigit(argv[1][i])) {
-            fprintf(stderr, "the first arg must be the dest port\n");
-            close(fd);
-            return;
-        }
-    }
-
-    port = atoi(argv[1]);
 
     dest = (struct sockaddr_in){0};
     dest.sin_family = AF_INET;
@@ -57,8 +47,8 @@ client(int argc, char *argv[])
     if (cwd[strlen(cwd) - 1] != '/')
         strcat(cwd, "/");
 
-    for (i = 2; i < argc; i++) {
-        send_abspath(fd, dest, cwd, argv[i]);
+    for (i = 0; i < paths_len; i++) {
+        send_abspath(fd, dest, cwd, paths[i]);
     }
 
     close(fd);
@@ -70,10 +60,8 @@ send_abspath(int fd, struct sockaddr_in dest, const char *cwd, const char *rel_p
     char abs_path[4096];
     int len, n;
 
-    if (is_dir(rel_path)) {
-        fprintf(stderr, "ignoring directory: %s\n", rel_path);
+    if (is_dir(rel_path))
         return;
-    }
 
     snprintf(abs_path, sizeof(abs_path), "%s%s", cwd, rel_path);
     len = strlen(abs_path);
