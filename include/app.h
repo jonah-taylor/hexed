@@ -21,4 +21,6 @@ struct App {
     Mode mode;
     Tiler *tiler;
     int refresh_bufs;
+    int fd;
+    int port;
 };

@@ -1,15 +1,17 @@
+#include <signal.h>
+
 #include "app.h"
 #include "buf.h"
+#include "client.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
+#include "server.h"
 #include "term.h"
 #include "tile.h"
 #include "tiler.h"
 #include "utils/list.h"
 #include "utils/xmem.h"
-
-#include <signal.h>
 
 DEF_LIST(LBuf, Buf*, lb)
 
@@ -20,26 +22,40 @@ int
 main(int argc, char *argv[])
 {
     App *app;
+    char lbufs_name[64];
 
-    argc = argc;
-    argv = argv;
+    if (argc > 1) {
+        client(argc, argv);
+        return 0;
+    }
 
     app = xmalloc(sizeof(*app));
     *app = (App){
         .lbufs = initLBuf(),
         .frame = initFrame(),
         .mode = EDITING,
-        .tiler = 0,
+        .tiler = NULL,
         .refresh_bufs = 1,
+        .fd = -1,
+        .port = -1,
     };
 
-    lbPush(app->lbufs, initBuf("buflist"));
+    // fills the fd and port fields
+    if (startServer(&app->fd, &app->port) < 0) {
+        freeApp(app);
+        return 0;
+    }
+
+    snprintf(lbufs_name, sizeof(lbufs_name), "/PORT=%d", app->port);
+
+    lbPush(app->lbufs, initBuf(lbufs_name));
     lbPush(app->lbufs, initBuf(""));
     loadFile(app->lbufs->items[1], "test.txt");
     loadBufList(app->lbufs->items[0], app->lbufs);
     // Add loadBufList flag for refreshing the buf list each loop
 
     app->tiler = initTiler(app->lbufs->items[0]);
+
 
     if (enableRaw()) {
         perror("raw mode");
@@ -59,6 +75,8 @@ main(int argc, char *argv[])
         char key = getch();
         if (handleKey(app, key)) break;
 
+        flushServer(app);
+
         if (app->refresh_bufs) {
             loadBufList(app->lbufs->items[0], app->lbufs);
             app->refresh_bufs = 0;
@@ -73,7 +91,6 @@ main(int argc, char *argv[])
     }
 
     freeApp(app);
-
     exitAltScreen();
     disableRaw();
     return 0;
@@ -90,6 +107,7 @@ freeApp(App *app)
     freeLBuf(app->lbufs);
     freeFrame(app->frame);
     freeTiler(app->tiler);
+    close(app->fd);
 
     free(app);
 }
