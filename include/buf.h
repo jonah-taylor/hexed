@@ -12,5 +12,5 @@ struct Buf {
 Buf* initBuf(const char *name);
 void freeBuf(Buf *buf);
 
-void loadFile(Buf *buf, const char *fname);
+void loadFile(Buf *buf, char *fname);
 void loadBufList(Buf *buf, LBuf *lbuf);

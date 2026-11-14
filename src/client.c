@@ -19,7 +19,7 @@ client(int argc, char *argv[])
 {
     struct sockaddr_in dest;
     int fd, port, i;
-    char cwd[1024];
+    char cwd[4096];
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -67,7 +67,7 @@ client(int argc, char *argv[])
 static void
 send_abspath(int fd, struct sockaddr_in dest, const char *cwd, const char *rel_path)
 {
-    char abs_path[2048];
+    char abs_path[4096];
     int len, n;
 
     if (is_dir(rel_path)) {

@@ -49,10 +49,7 @@ main(int argc, char *argv[])
     snprintf(lbufs_name, sizeof(lbufs_name), "/PORT=%d", app->port);
 
     lbPush(app->lbufs, initBuf(lbufs_name));
-    lbPush(app->lbufs, initBuf(""));
-    loadFile(app->lbufs->items[1], "test.txt");
     loadBufList(app->lbufs->items[0], app->lbufs);
-    // Add loadBufList flag for refreshing the buf list each loop
 
     app->tiler = initTiler(app->lbufs->items[0]);
 
@@ -140,6 +137,7 @@ handleKey(App *app, char key)
     case '\r':
     case '\n':
         if ((num = typeEnter(curr_tile))) {
+            saveCursToBkCv(curr_tile);
             curr_tile->buf = app->lbufs->items[num];
             curr_tile->curs = getCursFromBkCv(curr_tile);
         }

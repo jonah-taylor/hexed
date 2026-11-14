@@ -6,7 +6,7 @@ DEF_LIST(LCh, char, lch)
 DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBuf, Buf*, lb)
 
-static void wipeBuf(Buf *buf, const char *bname);
+static void wipeBufLns(Buf *buf);
 
 Buf*
 initBuf(const char *tmp_name)
@@ -18,6 +18,7 @@ initBuf(const char *tmp_name)
         .name = xstrdup(tmp_name),
         .lns = initLLCh(),
     };
+    llchPush(buf->lns, initLCh());
 
     return buf;
 }
@@ -28,17 +29,15 @@ freeBuf(Buf *buf)
     int i;
 
     free(buf->name);
-
-    for (i = 0; i < buf->lns->len; i++) {
+    for (i = 0; i < buf->lns->len; i++)
         freeLCh(buf->lns->items[i]);
-    }
     freeLLCh(buf->lns);
 
     free(buf);
 }
 
 void
-loadFile(Buf *buf, const char *fname)
+loadFile(Buf *buf, char *fname)
 {
     FILE *fp;
     int row;
@@ -50,6 +49,7 @@ loadFile(Buf *buf, const char *fname)
     free(buf->name);
     buf->name = strdup(fname);
 
+    wipeBufLns(buf);
     row = 0;
     for (;;) {
         llchPush(buf->lns, initLCh());
@@ -68,7 +68,12 @@ loadBufList(Buf *buf, LBuf *lbuf)
     int buf_i, b_nm_i;
     char *bname;
 
-    wipeBuf(buf, "bufslist");
+    wipeBufLns(buf);
+
+    if (lbuf->len <= 1) {
+        llchPush(buf->lns, initLCh());
+        return;
+    }
 
     for (buf_i = 1; buf_i < lbuf->len; buf_i++) {
         llchPush(buf->lns, initLCh());
@@ -76,22 +81,18 @@ loadBufList(Buf *buf, LBuf *lbuf)
         for (b_nm_i = 0; b_nm_i < (int)strlen(bname); b_nm_i++)
             lchPush(buf->lns->items[buf_i - 1], bname[b_nm_i]);
     }
+
 }
 
 static void
-wipeBuf(Buf *buf, const char *bname)
+wipeBufLns(Buf *buf)
 {
     int i;
-
-    free(buf->name);
 
     for (i = 0; i < buf->lns->len; i++) {
         freeLCh(buf->lns->items[i]);
     }
     freeLLCh(buf->lns);
 
-    *buf = (Buf){
-        .name = xstrdup(bname),
-        .lns = initLLCh(),
-    };
+    buf->lns = initLLCh();
 }

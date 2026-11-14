@@ -53,7 +53,7 @@ void
 flushServer(App *app)
 {
     int n;
-    char buf[1024];
+    char buf[4096];
 
     for (;;) {
         n = recv(app->fd, buf, sizeof(buf) - 1, 0);
@@ -63,12 +63,13 @@ flushServer(App *app)
             }
             if (errno == EINTR)
                 continue;
-
-            perror("recv");
             break;
         }
+        if (n == 0) continue;
         buf[n] = '\0';
-        printf("got: %s\n", buf);
+
+        lbPush(app->lbufs, initBuf(""));
+        loadFile(app->lbufs->items[app->lbufs->len - 1], buf);
     }
 }
 
