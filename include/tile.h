@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 typedef struct Buf Buf;
+typedef struct Cmd Cmd;
 typedef struct Cursor Cursor;
 typedef struct Frame Frame;
 typedef struct LBkCv LBkCv;
@@ -30,7 +31,7 @@ void saveCursToBkCv(Tile *t);
 Cursor getCursFromBkCv(Tile *t);
 void rmBkCv(Tile *t, Buf *buf);
 
-void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode);
+void drawTileOnFrame(Tile *tile, Frame *frame, Mode mode, Cmd *cmd);
 void updateCursor(Tile *t);
 
 void typeChar(Tile *t, char ch);

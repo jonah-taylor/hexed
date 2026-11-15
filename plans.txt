@@ -1,0 +1,14 @@
+
+Number commands
+
+Command history
+
+No dup buffers
+
+Highlighting
+
+Saving the buffer to the file
+
+Rect and Cursor only work because of header file order
+
+fix swap backspace etc

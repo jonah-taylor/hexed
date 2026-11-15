@@ -3,6 +3,7 @@
 #include "app.h"
 #include "buf.h"
 #include "client.h"
+#include "cmdgen.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
@@ -16,13 +17,22 @@
 DEF_LIST(LBuf, Buf*, lb)
 
 static void freeApp(App *app);
-static int handleKey(App *app, char key);
+static int tryCmd(App *app);
+
+enum CmdStat {
+    USED,
+    RETRY,
+    INCOMPLETE,
+    QUIT,
+};
+typedef enum CmdStat CmdStat;
 
 int
 main(int argc, char *argv[])
 {
     App *app;
     char lbufs_name[64];
+    CmdStat cmdstat;
     int i, isnum_arg1;
 
     if (argc > 1) {
@@ -39,13 +49,15 @@ main(int argc, char *argv[])
 
     app = xmalloc(sizeof(*app));
     *app = (App){
-        .lbufs = initLBuf(),
-        .frame = initFrame(),
         .mode = EDITING,
-        .tiler = NULL,
-        .refresh_bufs = 1,
+        .refr_bufs = 1,
         .fd = -1,
         .port = -1,
+
+        .cg = initCmdGen(),
+        .lbufs = initLBuf(),
+        .frame = initFrame(),
+        .tiler = NULL,
     };
 
     // fills the fd and port fields
@@ -73,20 +85,25 @@ main(int argc, char *argv[])
 
         flushServer(app);
 
-        if (app->refresh_bufs) {
+        if (app->refr_bufs) {
             loadBufList(app->lbufs->items[0], app->lbufs);
-            app->refresh_bufs = 0;
+            app->refr_bufs = 0;
         }
 
         reszFrame(app->frame, getTermSz());
-        drawTilesOnFrame(app->tiler, app->frame, app->mode);
+        drawTilesOnFrame(app->tiler, app->frame, app->mode, &app->cg->curr);
 
         drawFrame(app->frame);
         updateCursor(getSel(app->tiler));
         fflush(stdout);
 
-        char key = getch();
-        if (handleKey(app, key)) break;
+        getchForCmd(app->cg);
+        while ((cmdstat = tryCmd(app)) == RETRY);
+
+        if (cmdstat == USED)
+            usedCmd(app->cg);
+        else if (cmdstat == QUIT)
+            break;
     }
 
     freeApp(app);
@@ -95,30 +112,20 @@ main(int argc, char *argv[])
     return 0;
 }
 
-static void
-freeApp(App *app)
-{
-    int i;
-
-    for (i = 0; i < app->lbufs->len; i++) {
-        freeBuf(app->lbufs->items[i]);
-    }
-    freeLBuf(app->lbufs);
-    freeFrame(app->frame);
-    freeTiler(app->tiler);
-    close(app->fd);
-
-    free(app);
-}
-
 static int
-handleKey(App *app, char key)
+tryCmd(App *app)
 {
-    Tile *curr_tile;
-    int num;
-    char str[5];
+    Cmd *c;
+    Tile *tile;
+    char key;
+    int idx;
 
-    curr_tile = getSel(app->tiler);
+    c = &app->cg->curr;
+    tile = getSel(app->tiler);
+
+    if (c->klen == 0)
+        return INCOMPLETE;
+    key = c->keys[0];
 
     // mode agnostic
     switch (key) {
@@ -131,152 +138,160 @@ handleKey(App *app, char key)
             app->mode = EDITING;
             setCursorBlock();
         }
-        return 0;
+        *c = (Cmd){0};
+        return USED;
     case '\x08': // backspace
     case '\x7f':
-        typeBksp(curr_tile);
-        return 0;
+        typeBksp(tile);
+        return USED;
     case '\r':
     case '\n':
-        if ((num = typeEnter(curr_tile))) {
-            saveCursToBkCv(curr_tile);
-            curr_tile->buf = app->lbufs->items[num];
-            curr_tile->curs = getCursFromBkCv(curr_tile);
+        if ((idx = typeEnter(tile)) && idx < app->lbufs->len) {
+            saveCursToBkCv(tile);
+            tile->buf = app->lbufs->items[idx];
+            tile->curs = getCursFromBkCv(tile);
         }
-        return 0;
+        return USED;
     case '\x1b': // arrow keys
-        if (read(STDIN_FILENO, &key, 1) != 1 || key != '[')
-            return 0;
-        if (read(STDIN_FILENO, &key, 1) != 1)
-            return 0;
+
+        if (c->klen < 3)
+            return USED;
+        key = c->keys[2];
+
         switch (key) {
-        case 'A': mvUp(curr_tile); return 0;
-        case 'B': mvDown(curr_tile); return 0;
-        case 'C': mvRight(curr_tile); return 0;
-        case 'D': mvLeft(curr_tile); return 0;
+        case 'A':
+            mvUp(tile);
+            return USED;
+        case 'B':
+            mvDown(tile);
+            return USED;
+        case 'C':
+            mvRight(tile);
+            return USED;
+        case 'D':
+            mvLeft(tile);
+            return USED;
         case '1':
-            if (read(STDIN_FILENO, &str, 5) != 5)
-                return 0;
-            if (strncmp(str, "05;5u", 5) == 0) {
-                typeTab(curr_tile);
-                return 0;
+            if (c->klen < 8)
+                return USED;
+            if (strncmp((c->keys + 3), "05;5u", 5) == 0) {
+                typeTab(tile);
+                return USED;
             }
         }
     }
 
     // typing
     if (app->mode == TYPING) {
-        typeChar(curr_tile, key);
-        return 0;
+        typeChar(tile, key);
+        *c = (Cmd){0};
+        return USED;
     }
 
-    // editting/resizing
+    // editing/resizing
     switch(key) {
 
+    case 'a': *c = app->cg->prev; return RETRY;
+
     case 'b':
-        app->refresh_bufs = 1;
-        saveCursToBkCv(curr_tile);
-        curr_tile->buf = app->lbufs->items[0];
-        curr_tile->curs = getCursFromBkCv(curr_tile);
-        break;
+        app->refr_bufs = 1;
+        saveCursToBkCv(tile);
+        tile->buf = app->lbufs->items[0];
+        tile->curs = getCursFromBkCv(tile);
+        return USED;
 
-    case 'C': rotTilesCW(app->tiler); break;
+    case 'C': rotTilesCW(app->tiler); return USED;
+
     case 'd':
-        key = getch();
+        if (c->klen == 1) return INCOMPLETE;
+        key = c->keys[1];
         switch (key) {
-        case 'd': rmLn(curr_tile); break;
-        case 'h': rmLnBeforeCurs(curr_tile); break;
-        case 'l': rmLnAfterCurs(curr_tile); break;
-        case 'j': rmLnBelow(curr_tile); break;
-        case 'k': rmLnAbove(curr_tile); break;
-        default: return handleKey(app, key);
+        case 'd': rmLn(tile); return USED;
+        case 'h': rmLnBeforeCurs(tile); return USED;
+        case 'l': rmLnAfterCurs(tile); return USED;
+        case 'j': rmLnBelow(tile); return USED;
+        case 'k': rmLnAbove(tile); return USED;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
         }
-        break;
-    case 'D': rmSel(app->tiler); break;
 
-    case 'h':
-        if (app->mode == RESIZING)
-            reszSel(app->tiler, LEFT, true);
-        else
-            mvLeft(curr_tile);
-        break;
+    case 'D': rmSel(app->tiler); return USED;
 
-    case 'H': selTileInCursorDir(app->tiler, LEFT); break;
-    case 'i': mvFastLeft(curr_tile); break;
-    case 'I': mvFullLeft(curr_tile); break;
+    case 'h': (app->mode == RESIZING) ?
+              reszSel(app->tiler, LEFT, true) : mvLeft(tile);
+        return USED;
 
-    case 'j':
-        if (app->mode == RESIZING)
-            reszSel(app->tiler, DOWN, true);
-        else
-            mvDown(curr_tile);
-        break;
+    case 'H': selTileInCursorDir(app->tiler, LEFT); return USED;
+    case 'i': mvFastLeft(tile); return USED;
+    case 'I': mvFullLeft(tile); return USED;
 
-    case 'J': selTileInCursorDir(app->tiler, DOWN); break;
+    case 'j': (app->mode == RESIZING) ?
+            reszSel(app->tiler, DOWN, true) : mvDown(tile);
+        return USED;
 
-    case 'k':
-        if (app->mode == RESIZING)
-            reszSel(app->tiler, UP, true);
-        else
-            mvUp(curr_tile);
-        break;
+    case 'J': selTileInCursorDir(app->tiler, DOWN); return USED;
 
-    case 'K': selTileInCursorDir(app->tiler, UP); break;
+    case 'k': (app->mode == RESIZING) ?
+            reszSel(app->tiler, UP, true) : mvUp(tile);
+        return USED;
 
-    case 'l':
-        if (app->mode == RESIZING)
-            reszSel(app->tiler, RIGHT, true);
-        else
-            mvRight(curr_tile);
-        break;
+    case 'K': selTileInCursorDir(app->tiler, UP); return USED;
 
-    case 'L': selTileInCursorDir(app->tiler, RIGHT); break;
-    case 'm': jmpDown(curr_tile, 10); break;
-    case 'M': jmpUp(curr_tile, 10); break;
-    case 'n': newLnBelow(curr_tile); break;
-    case 'N': newLnAbove(curr_tile); break;
-    case 'o': mvFastRight(curr_tile); break;
-    case 'O': mvFullRight(curr_tile); break;
+    case 'l': (app->mode == RESIZING) ?
+            reszSel(app->tiler, RIGHT, true) : mvRight(tile);
+        return USED;
+
+    case 'L': selTileInCursorDir(app->tiler, RIGHT); return USED;
+    case 'm': jmpDown(tile, 10); return USED;
+    case 'M': jmpUp(tile, 10); return USED;
+    case 'n': newLnBelow(tile); return USED;
+    case 'N': newLnAbove(tile); return USED;
+    case 'o': mvFastRight(tile); return USED;
+    case 'O': mvFullRight(tile); return USED;
 
     case 'q':
-        key = getch();
+        if (c->klen == 1) return INCOMPLETE;
+        key = c->keys[1];
         switch (key) {
-        case 'q': return 1;
-        default: return handleKey(app, key);
+        case 'q': return QUIT;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
         }
 
-    case 'R': app->mode = (app->mode == RESIZING) ? EDITING : RESIZING; break;
+    case 'R': app->mode = (app->mode == RESIZING) ? EDITING : RESIZING; return USED;
 
     case 's':
-        key = getch();
-        swapNextCh(curr_tile, key);
-        break;
+        if (c->klen == 1) return INCOMPLETE;
+        key = c->keys[1];
+        swapNextCh(tile, key);
+        return USED;
+
     case 'S':
-        key = getch();
+        if (c->klen == 1) return INCOMPLETE;
+        key = c->keys[1];
+
         switch(key) {
-        case 'h': swapCursorDir(app->tiler, LEFT); break;
-        case 'j': swapCursorDir(app->tiler, DOWN); break;
-        case 'k': swapCursorDir(app->tiler, UP); break;
-        case 'l': swapCursorDir(app->tiler, RIGHT); break;
-        default: return handleKey(app, key);
+        case 'h': swapCursorDir(app->tiler, LEFT); return USED;
+        case 'j': swapCursorDir(app->tiler, DOWN); return USED;
+        case 'k': swapCursorDir(app->tiler, UP); return USED;
+        case 'l': swapCursorDir(app->tiler, RIGHT); return USED;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
         }
-        break;
 
     case 't':
-        key = getch();
+        if (c->klen == 1)
+            return INCOMPLETE;
+        key = c->keys[1];
         switch(key) {
-        case 'h': newTile(app->tiler, LEFT, app->lbufs->items[0]); break;
-        case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]); break;
-        case 'k': newTile(app->tiler, UP, app->lbufs->items[0]); break;
-        case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); break;
-        default: return handleKey(app, key);
+        case 'h': newTile(app->tiler, LEFT, app->lbufs->items[0]); return USED;
+        case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]); return USED;
+        case 'k': newTile(app->tiler, UP, app->lbufs->items[0]); return USED;
+        case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); return USED;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
         }
-        break;
 
-    case 'x': rmNextCh(curr_tile); break;
+    case 'x': rmNextCh(tile); return USED;
 
-    case '<': unindentLnFront(curr_tile); break;
-    case '>': indentLnFront(curr_tile); break;
+    case '<': unindentLnFront(tile); return USED;
+    case '>': indentLnFront(tile); return USED;
 
     case 0x1A: // CTRL+Z
         exitAltScreen();
@@ -284,12 +299,34 @@ handleKey(App *app, char key)
 
         disableRaw();
         if (kill(0, SIGTSTP) != 0)
-            return -1;
+            return QUIT;
         enableRaw();
 
         enterAltScreen();
         clearPrevFrame(app->frame);
+        break;
+
+        default: shiftKeysLeft(app->cg, c->klen); return INCOMPLETE;
     }
 
-    return 0;
+    // no cmd was used
+    return INCOMPLETE;
 }
+
+static void
+freeApp(App *app)
+{
+    int i;
+
+    for (i = 0; i < app->lbufs->len; i++) {
+        freeBuf(app->lbufs->items[i]);
+    }
+    freeCmdGen(app->cg);
+    freeLBuf(app->lbufs);
+    freeFrame(app->frame);
+    freeTiler(app->tiler);
+    close(app->fd);
+
+    free(app);
+}
+

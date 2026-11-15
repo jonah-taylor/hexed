@@ -3,7 +3,9 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 
+typedef struct CmdGen CmdGen;
 typedef struct LBuf LBuf;
+typedef struct LLCh LLCh;
 typedef struct Frame Frame;
 typedef struct Tiler Tiler;
 
@@ -16,11 +18,13 @@ typedef enum Mode Mode;
 
 typedef struct App App;
 struct App {
-    LBuf *lbufs;
-    Frame *frame;
     Mode mode;
-    Tiler *tiler;
-    int refresh_bufs;
+    int refr_bufs;
     int fd;
     int port;
+
+    CmdGen *cg;
+    Frame *frame;
+    LBuf *lbufs;
+    Tiler *tiler;
 };

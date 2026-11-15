@@ -1,6 +1,7 @@
 #include "app.h"
 #include "buf.h"
 #include "cursor.h"
+#include "cmdgen.h"
 #include "frame.h"
 #include "geometry.h"
 #include "term.h"
@@ -68,11 +69,11 @@ getSel(Tiler *tiler)
 }
 
 void
-drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode)
+drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode, Cmd *cmd)
 {
     int i;
     for (i = 0; i < tiler->ts_len; i++)
-        drawTileOnFrame(tiler->tiles[i], frame, mode);
+        drawTileOnFrame(tiler->tiles[i], frame, mode, cmd);
 }
 
 void

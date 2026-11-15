@@ -1,5 +1,6 @@
 #include "app.h"
 #include "buf.h"
+#include "cmdgen.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
@@ -15,9 +16,10 @@ DEF_LIST(LBkCv, BkCv, lbkcv)
 static void roundCursInBounds(Tile *t);
 inline static void setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c);
 inline static int calcNumLen(int lns);
-static void drawNumOnFrame(Tile *t, Frame *f, Mode m, int x, int y, int n);
+static void drawNumOnFrame(Tile *t, Frame *f, int fg, int x, int y, int n);
 static void drawLnOnFrame(Tile *t, Frame *f, int x, int y, int ln_i);
 static void drawBufNameOnFrame(Tile *t, Frame *f, int x, int y);
+static void drawCmdOnFrame(Tile *t, Cmd *cmd, Frame *f, int x, int y);
 static int calcLnHeight(Rect *r, int *ln_len, int *xpadn);
 
 Tile*
@@ -92,9 +94,9 @@ rmBkCv(Tile *t, Buf *buf)
 }
 
 void
-drawTileOnFrame(Tile *t, Frame *f, Mode m)
+drawTileOnFrame(Tile *t, Frame *f, Mode m, Cmd *c)
 {
-    int ln_i, x, y;
+    int ln_i, num_fg, x, y;
     int xpadn;
     Rect r;
     LLCh *lns;
@@ -104,21 +106,23 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
     lns = t->buf->lns;
     r = fixedFromPercRect(t->rect);
     xpadn = calcNumLen(lns->len);
+    num_fg = (m == RESIZING) ? 31 : 0;
 
     // draw line at cursor
     y = (r.y2 - r.y1) / 2;
     ln_i = t->curs.ln;
     x = calcNumLen(ln_i + 1);
-    drawNumOnFrame(t, f, m, y, x, (ln_i + 1));
+    drawNumOnFrame(t, f, num_fg, y, x, (ln_i + 1));
     x = xpadn + 2;
     drawLnOnFrame(t, f, y, x, ln_i);
 
     // draw lines under cursor
     y = (r.y2 - r.y1) / 2;
-    for (ln_i = t->curs.ln + 1; ln_i < lns->len && y < (r.y2 - r.y1) - 1; ln_i++) {
+    for (ln_i = t->curs.ln + 1; ln_i < lns->len; ln_i++) {
         y += calcLnHeight(&r, &lns->items[ln_i - 1]->len, &xpadn);
+        if (y >= (r.y2 - r.y1) - 1) break;
         x = xpadn;
-        drawNumOnFrame(t, f, m, y, x, (ln_i - t->curs.ln));
+        drawNumOnFrame(t, f, num_fg, y, x, (ln_i - t->curs.ln));
         x = xpadn + 2;
         drawLnOnFrame(t, f, y, x, ln_i);
     }
@@ -129,10 +133,11 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
 
     // draw lines above cursor
     y = (r.y2 - r.y1) / 2;
-    for (ln_i = t->curs.ln - 1; ln_i >= 0 && y >= 0; ln_i--) {
+    for (ln_i = t->curs.ln - 1; ln_i >= 0; ln_i--) {
         y -= calcLnHeight(&r, &lns->items[ln_i]->len, &xpadn);
+        if (y < 0) break;
         x = xpadn;
-        drawNumOnFrame(t, f, m, y, x, (t->curs.ln - ln_i));
+        drawNumOnFrame(t, f, num_fg, y, x, (t->curs.ln - ln_i));
         x = xpadn + 2;
         drawLnOnFrame(t, f, y, x, ln_i);
     }
@@ -145,6 +150,9 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m)
     x = (r.x2 - r.x1) - strlen(t->buf->name) - 1;
     y = (r.y2 - r.y1) - 1;
     drawBufNameOnFrame(t, f, y, x);
+    x = calcNumLen(c->num);
+    y = (r.y2 - r.y1) - 1;
+    drawCmdOnFrame(t, c, f, y, x);
 }
 
 void
@@ -612,20 +620,19 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
 }
 
 static void
-drawNumOnFrame(Tile *t, Frame *f, Mode mode, int y, int x, int num)
+drawNumOnFrame(Tile *t, Frame *f, int fg, int y, int x, int num)
 {
     Rect r;
     char ch;
 
     r = fixedFromPercRect(t->rect);
-    r.y2--;
 
     while (num > 0) {
         ch = ('0' + (num % 10));
         setTileCell(&r, f, &y, &x,
             (Cell){
                 .str = {ch,'\0'},
-                .fg = (mode == RESIZING) ? 31 : 0,
+                .fg = fg,
             });
         num /= 10;
         x--;
@@ -644,6 +651,28 @@ drawBufNameOnFrame(Tile *t, Frame *f, int y, int x)
     // draw tile name
     str = t->buf->name;
     for (ch_i = 0; ch_i < (int)strlen(str); ch_i++) {
+        ch = str[ch_i];
+        setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
+        x++;
+    }
+}
+
+static void
+drawCmdOnFrame(Tile *t, Cmd *c, Frame *f, int y, int x)
+{
+    char ch, *str;
+    int ch_i;
+    Rect r;
+
+    r = fixedFromPercRect(t->rect);
+
+    // draw cmd num
+    drawNumOnFrame(t, f, 0, y, x, c->num);
+    x++;
+
+    // draw cmd keys
+    str = c->keys;
+    for (ch_i = 0; ch_i < c->klen; ch_i++) {
         ch = str[ch_i];
         setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
         x++;

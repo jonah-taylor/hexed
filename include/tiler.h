@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+typedef struct Cmd Cmd;
 enum Dir : int;
 typedef enum Dir Dir;
 typedef struct Frame Frame;
@@ -24,7 +25,7 @@ void freeTiler(Tiler *tiler);
 
 Tile *getSel(Tiler *tiler);
 
-void drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode);
+void drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode, Cmd *cmd);
 void newTile(Tiler *tiler, Dir dir, Buf *buf);
 
 void selTileInCursorDir(Tiler *tiler, Dir dir);
