@@ -531,14 +531,6 @@ rmNextCh(Tile *t)
     lchRm(ln, t->curs.ch);
 }
 
-void
-swapNextCh(Tile *t, char ch)
-{
-    rmNextCh(t);
-    typeChar(t, ch);
-    mvLeft(t);
-}
-
 static void
 roundCursInBounds(Tile *t)
 {

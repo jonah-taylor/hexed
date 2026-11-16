@@ -64,7 +64,6 @@ void mvFastRight(Tile *t);
 void mvFullRight(Tile *t);
 
 void rmNextCh(Tile *t);
-void swapNextCh(Tile *t, char ch);
 
 void unindentLnFront(Tile *t);
 void indentLnFront(Tile *t);

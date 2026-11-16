@@ -38,7 +38,7 @@ getchForCmd(CmdGen *cg)
         c->keys[c->klen] = key;
         c->klen++;
 
-        c->klen += read(STDIN_FILENO, &c->keys[1], sizeof(c->keys) - c->klen);
+        c->klen += read(STDIN_FILENO, &c->keys[c->klen], sizeof(c->keys) - c->klen);
         if (c->klen == 1 || c->keys[1] != '[')
             *c = (Cmd){0};
 

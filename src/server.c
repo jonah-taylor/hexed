@@ -52,11 +52,11 @@ startServer(int *fd, int *port)
 void
 flushServer(App *app)
 {
-    int n;
-    char buf[4096];
+    int n, i, is_dup;
+    char buf_name[4096];
 
     for (;;) {
-        n = recv(app->fd, buf, sizeof(buf) - 1, 0);
+        n = recv(app->fd, buf_name, sizeof(buf_name) - 1, 0);
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;
@@ -66,11 +66,21 @@ flushServer(App *app)
             break;
         }
         if (n == 0) continue;
-        buf[n] = '\0';
+        buf_name[n] = '\0';
 
-        lbPush(app->lbufs, initBuf(""));
-        loadFile(app->lbufs->items[app->lbufs->len - 1], buf);
-        app->refr_bufs = 1;
+        is_dup = 0;
+        for (i = 0; i < app->lbufs->len; i++) {
+            if (strncmp(app->lbufs->items[i]->name,
+                        buf_name, sizeof(buf_name)) == 0) {
+                is_dup = 1;
+                break;
+            }
+        }
+        if (!is_dup) {
+            lbPush(app->lbufs, initBuf(""));
+            loadFile(app->lbufs->items[app->lbufs->len - 1], buf_name);
+            app->refr_bufs = 1;
+        }
     }
 }
 

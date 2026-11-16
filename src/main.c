@@ -21,7 +21,7 @@ static int tryCmd(App *app);
 
 enum CmdStat {
     USED,
-    RETRY,
+    RERUN,
     INCOMPLETE,
     QUIT,
 };
@@ -98,14 +98,21 @@ main(int argc, char *argv[])
         fflush(stdout);
 
         getchForCmd(app->cg);
-        while ((cmdstat = tryCmd(app)) == RETRY);
-
-        if (cmdstat == USED)
-            usedCmd(app->cg);
-        else if (cmdstat == QUIT)
-            break;
+        do {
+            cmdstat = tryCmd(app);
+            if (cmdstat == USED) {
+                usedCmd(app->cg);
+                for (i = 1; i < app->cg->prev.num; i++) {
+                    app->cg->curr = app->cg->prev;
+                    cmdstat = tryCmd(app);
+                }
+                app->cg->curr = (Cmd){0};
+            } else if (cmdstat == QUIT)
+                goto cleanup;
+        } while (cmdstat == RERUN);
     }
 
+cleanup:
     freeApp(app);
     exitAltScreen();
     disableRaw();
@@ -191,7 +198,7 @@ tryCmd(App *app)
     // editing/resizing
     switch(key) {
 
-    case 'a': *c = app->cg->prev; return RETRY;
+    case 'a': *c = app->cg->prev; return RERUN;
 
     case 'b':
         app->refr_bufs = 1;
@@ -211,7 +218,7 @@ tryCmd(App *app)
         case 'l': rmLnAfterCurs(tile); return USED;
         case 'j': rmLnBelow(tile); return USED;
         case 'k': rmLnAbove(tile); return USED;
-        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
     case 'D': rmSel(app->tiler); return USED;
@@ -253,15 +260,19 @@ tryCmd(App *app)
         key = c->keys[1];
         switch (key) {
         case 'q': return QUIT;
-        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
     case 'R': app->mode = (app->mode == RESIZING) ? EDITING : RESIZING; return USED;
 
     case 's':
         if (c->klen == 1) return INCOMPLETE;
-        key = c->keys[1];
-        swapNextCh(tile, key);
+        shiftKeysLeft(app->cg, 1);
+        rmNextCh(tile);
+        app->mode = TYPING;
+        tryCmd(app);
+        app->mode = EDITING;
+        mvLeft(tile);
         return USED;
 
     case 'S':
@@ -273,7 +284,7 @@ tryCmd(App *app)
         case 'j': swapCursorDir(app->tiler, DOWN); return USED;
         case 'k': swapCursorDir(app->tiler, UP); return USED;
         case 'l': swapCursorDir(app->tiler, RIGHT); return USED;
-        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
     case 't':
@@ -285,7 +296,7 @@ tryCmd(App *app)
         case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]); return USED;
         case 'k': newTile(app->tiler, UP, app->lbufs->items[0]); return USED;
         case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); return USED;
-        default: shiftKeysLeft(app->cg, c->klen - 1); return RETRY;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
     case 'x': rmNextCh(tile); return USED;
@@ -304,7 +315,7 @@ tryCmd(App *app)
 
         enterAltScreen();
         clearPrevFrame(app->frame);
-        break;
+        return USED;
 
         default: shiftKeysLeft(app->cg, c->klen); return INCOMPLETE;
     }

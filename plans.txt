@@ -1,9 +1,7 @@
 
-Number commands
+Macros?
 
-Command history
-
-No dup buffers
+Deleting line from the buffer list removes the actual buffer
 
 Highlighting
 
@@ -11,4 +9,8 @@ Saving the buffer to the file
 
 Rect and Cursor only work because of header file order
 
-fix swap backspace etc
+fix swap (can't repeat and indent)
+
+fix cmd int overflow
+
+update client side activation procedure
