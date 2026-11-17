@@ -71,6 +71,7 @@ saveCursToBkCv(Tile *t)
     for (i = 0; i < t->lbkcv->len; i++) {
         oth = &t->lbkcv->items[i];
         if (bkcv.buf == oth->buf) {
+            free(oth->curs);
             oth->curs = bkcv.curs;
             return;
         }
