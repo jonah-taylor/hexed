@@ -101,12 +101,9 @@ main(int argc, char *argv[])
         do {
             cmdstat = tryCmd(app);
             if (cmdstat == USED) {
-                usedCmd(app->cg);
-                for (i = 1; i < app->cg->prev.num; i++) {
-                    app->cg->curr = app->cg->prev;
+                for (i = 1; i < app->cg->curr.num; i++)
                     cmdstat = tryCmd(app);
-                }
-                app->cg->curr = (Cmd){0};
+                usedCmd(app->cg);
             } else if (cmdstat == QUIT)
                 goto cleanup;
         } while (cmdstat == RERUN);
@@ -122,7 +119,7 @@ cleanup:
 static int
 tryCmd(App *app)
 {
-    Cmd *c;
+    Cmd *c, cmd_copy;
     Tile *tile;
     char key;
     int idx;
@@ -156,7 +153,7 @@ tryCmd(App *app)
         if ((idx = typeEnter(tile)) && idx < app->lbufs->len) {
             saveCursToBkCv(tile);
             tile->buf = app->lbufs->items[idx];
-            tile->curs = getCursFromBkCv(tile);
+            *tile->curs = getCursFromBkCv(tile);
         }
         return USED;
     case '\x1b': // arrow keys
@@ -204,8 +201,25 @@ tryCmd(App *app)
         app->refr_bufs = 1;
         saveCursToBkCv(tile);
         tile->buf = app->lbufs->items[0];
-        tile->curs = getCursFromBkCv(tile);
+        *tile->curs = getCursFromBkCv(tile);
         return USED;
+
+    case 'c':
+        if (c->klen == 1) return INCOMPLETE;
+        key = c->keys[1];
+        switch (key) {
+        case 'c': rmLn(tile); app->mode = TYPING; setCursorLine();
+                  return USED;
+        case 'h': rmLnBeforeCurs(tile); app->mode = TYPING; setCursorLine();
+                  return USED;
+        case 'l': rmLnAfterCurs(tile); app->mode = TYPING; setCursorLine();
+                  return USED;
+        case 'j': rmLnBelow(tile); app->mode = TYPING; setCursorLine();
+                  return USED;
+        case 'k': rmLnAbove(tile); app->mode = TYPING; setCursorLine();
+                  return USED;
+        default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
+        }
 
     case 'C': rotTilesCW(app->tiler); return USED;
 
@@ -267,10 +281,12 @@ tryCmd(App *app)
 
     case 's':
         if (c->klen == 1) return INCOMPLETE;
+        cmd_copy = *c;
         shiftKeysLeft(app->cg, 1);
         rmNextCh(tile);
         app->mode = TYPING;
         tryCmd(app);
+        *c = cmd_copy;
         app->mode = EDITING;
         mvLeft(tile);
         return USED;

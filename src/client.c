@@ -12,7 +12,7 @@
 
 static int is_dir(const char *path);
 static void send_abspath(int fd, struct sockaddr_in dest,
-        const char *cwd, const char *rel_path);
+        const char *cwd, const char *path);
 
 void
 client(int port, int paths_len, char *paths[])
@@ -55,24 +55,29 @@ client(int port, int paths_len, char *paths[])
 }
 
 static void
-send_abspath(int fd, struct sockaddr_in dest, const char *cwd, const char *rel_path)
+send_abspath(int fd, struct sockaddr_in dest, const char *cwd, const char *path)
 {
     char abs_path[4096];
     int len, n;
 
-    if (is_dir(rel_path))
+    if (is_dir(path))
         return;
 
-    snprintf(abs_path, sizeof(abs_path), "%s%s", cwd, rel_path);
+    if (strlen(path) > 0 && (path[0] == '/' || path[0] == '\\'))
+        snprintf(abs_path, sizeof(abs_path), "%s", path);
+    else
+        snprintf(abs_path, sizeof(abs_path), "%s%s", cwd, path);
+
     len = strlen(abs_path);
 
     n = sendto(fd, abs_path, len, 0, (struct sockaddr *)&dest, sizeof(dest));
 
+    printf("sent: %s\n", abs_path);
     if (n < 0) {
-        fprintf(stderr, "%s: sendto failed\n", rel_path);
+        fprintf(stderr, "%s: sendto failed\n", path);
     }
     else if (n != len) {
-        fprintf(stderr, "%s: datagram corrupted\n", rel_path);
+        fprintf(stderr, "%s: datagram corrupted\n", path);
     }
 }
 

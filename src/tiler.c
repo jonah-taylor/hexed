@@ -83,10 +83,10 @@ newTile(Tiler *tiler, Dir dir, Buf *buf)
     int x1, x2, y1, y2;
 
     tile = getSel(tiler);
-    x1 = tile->rect.x1;
-    x2 = tile->rect.x2;
-    y1 = tile->rect.y1;
-    y2 = tile->rect.y2;
+    x1 = tile->rect->x1;
+    x2 = tile->rect->x2;
+    y1 = tile->rect->y1;
+    y2 = tile->rect->y2;
 
     switch (dir) {
     case UP:
@@ -106,22 +106,22 @@ newTile(Tiler *tiler, Dir dir, Buf *buf)
     case UP:
         y2 = y1 + (y2 - y1) / 2;
         y2 = (y2 + 4) / INC * INC;
-        tile->rect.y1 = y2;
+        tile->rect->y1 = y2;
         break;
     case DOWN:
         y1 = y1 + (y2 - y1) / 2;
         y1 = (y1 + 4) / INC * INC;
-        tile->rect.y2 = y1;
+        tile->rect->y2 = y1;
         break;
     case LEFT:
         x2 = x1 + (x2 - x1) / 2;
         x2 = (x2 + 4) / INC * INC;
-        tile->rect.x1 = x2;
+        tile->rect->x1 = x2;
         break;
     case RIGHT:
         x1 = x1 + (x2 - x1) / 2;
         x1 = (x1 + 4) / INC * INC;
-        tile->rect.x2 = x1;
+        tile->rect->x2 = x1;
         break;
     }
 
@@ -190,13 +190,13 @@ rmSel(Tiler *tiler)
 
     if (dir == 4) return;
 
-    i_rect = &tiler->tiles[inner[0]]->rect;
+    i_rect = tiler->tiles[inner[0]]->rect;
 
     switch (dir) {
     case UP:
     case DOWN:
         for (i = 0; i < o_len; i++) {
-            o_rect = &tiler->tiles[outer[i]]->rect;
+            o_rect = tiler->tiles[outer[i]]->rect;
             if (i_rect->y1 < o_rect->y1) o_rect->y1 = i_rect->y1;
             if (i_rect->y2 > o_rect->y2) o_rect->y2 = i_rect->y2;
         }
@@ -204,7 +204,7 @@ rmSel(Tiler *tiler)
     case LEFT:
     case RIGHT:
         for (i = 0; i < o_len; i++) {
-            o_rect = &tiler->tiles[outer[i]]->rect;
+            o_rect = tiler->tiles[outer[i]]->rect;
             if (i_rect->x1 < o_rect->x1) o_rect->x1 = i_rect->x1;
             if (i_rect->x2 > o_rect->x2) o_rect->x2 = i_rect->x2;
         }
@@ -259,7 +259,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
 
     // min size check on shrinking side
     for (i = 0; i < ((growing) ? o_len : i_len); i++) {
-        rect = &tiler->tiles[(growing) ? outer[i] : inner[i]]->rect;
+        rect = tiler->tiles[(growing) ? outer[i] : inner[i]]->rect;
         switch (dir) {
         case UP:
         case DOWN:
@@ -282,7 +282,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
 
     // adjust the inner aligned
     for (i = 0; i < i_len; i++) {
-        rect = &tiler->tiles[inner[i]]->rect;
+        rect = tiler->tiles[inner[i]]->rect;
         switch (dir) {
         case UP:
             rect->y1 += (growing) ? -vel : vel;
@@ -301,7 +301,7 @@ reszSel(Tiler *tiler, Dir dir, bool growing)
 
     // adjust the outer aligned
     for (i = 0; i < o_len; i++) {
-        rect = &tiler->tiles[outer[i]]->rect;
+        rect = tiler->tiles[outer[i]]->rect;
         switch (dir) {
         case UP:
             rect->y2 += (growing) ? -vel : vel;
@@ -328,7 +328,7 @@ rotTilesCW(Tiler *tiler)
     int i, t1, t2;
     Rect *rect;
     for (i = 0; i < tiler->ts_len; i++) {
-        rect = &tiler->tiles[i]->rect;
+        rect = tiler->tiles[i]->rect;
         t1 = rect->x1;
         t2 = rect->x2;
         rect->x1 = PERC_DENOM - rect->y2;
@@ -346,10 +346,10 @@ getTileIdxInCursorDir(Tiler *tiler, Dir dir)
     int x, y;
 
     tile = getSel(tiler);
-    x = fixedFromPercX(tile->rect.x1) + tile->curs.x;
-    y = fixedFromPercY(tile->rect.y1) + tile->curs.y;
+    x = fixedFromPercX(tile->rect->x1) + tile->curs->x;
+    y = fixedFromPercY(tile->rect->y1) + tile->curs->y;
 
-    rect = &tile->rect;
+    rect = tile->rect;
     switch (dir) {
     case UP:
         y = fixedFromPercY(rect->y1) - 1;
@@ -375,7 +375,7 @@ getTileIdxAtPoint(Tiler *tiler, int x, int y, bool fixed)
     int i;
 
     for (i = 0; i < tiler->ts_len; i++) {
-        rect = &tiler->tiles[i]->rect;
+        rect = tiler->tiles[i]->rect;
         if (fixed) {
             if (fixedFromPercX(rect->x1) <= x && x <= fixedFromPercX(rect->x2))
             if (fixedFromPercY(rect->y1) <= y && y <= fixedFromPercY(rect->y2))
@@ -397,7 +397,7 @@ countTilesAtPoint(Tiler *tiler, int x, int y)
 
     count = 0;
     for (i = 0; i < tiler->ts_len; i++) {
-        rect = &tiler->tiles[i]->rect;
+        rect = tiler->tiles[i]->rect;
         if (rect->x1 <= x && x <= rect->x2)
         if (rect->y1 <= y && y <= rect->y2)
             count++;
@@ -420,22 +420,22 @@ walkSelEdge(Tiler *tiler, Dir dir, int *in[], int *i_len, int *out[], int *o_len
     *o_len = 0;
     o_cap = 1;
 
-    x = (getSel(tiler)->rect.x2 + getSel(tiler)->rect.x1) / 2;
-    y = (getSel(tiler)->rect.y2 + getSel(tiler)->rect.y1) / 2;
+    x = (getSel(tiler)->rect->x2 + getSel(tiler)->rect->x1) / 2;
+    y = (getSel(tiler)->rect->y2 + getSel(tiler)->rect->y1) / 2;
 
     // start at the middle of the edge
     switch (dir) {
     case UP:
-        y = getSel(tiler)->rect.y1;
+        y = getSel(tiler)->rect->y1;
         break;
     case DOWN:
-        y = getSel(tiler)->rect.y2;
+        y = getSel(tiler)->rect->y2;
         break;
     case LEFT:
-        x = getSel(tiler)->rect.x1;
+        x = getSel(tiler)->rect->x1;
         break;
     case RIGHT:
-        x = getSel(tiler)->rect.x2;
+        x = getSel(tiler)->rect->x2;
         break;
     }
 

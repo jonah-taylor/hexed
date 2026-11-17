@@ -3,6 +3,8 @@
 
 #include "utils/xmem.h"
 
+#define NUM_CAP 100000
+
 CmdGen
 *initCmdGen()
 {
@@ -27,9 +29,11 @@ getchForCmd(CmdGen *cg)
     c = &cg->curr;
 
     // handle number
-    if (key >= '0' && key <= '9') {
+    if (key >= '0' && key <= '9' && c->num < NUM_CAP) {
         c->num *= 10;
         c->num += (key - '0');
+        if (c->num >= NUM_CAP)
+            c->num = NUM_CAP - 1;
         return;
     }
 
@@ -39,7 +43,7 @@ getchForCmd(CmdGen *cg)
         c->klen++;
 
         c->klen += read(STDIN_FILENO, &c->keys[c->klen], sizeof(c->keys) - c->klen);
-        if (c->klen == 1 || c->keys[1] != '[')
+        if (c->klen == 1)
             *c = (Cmd){0};
 
         return;
@@ -63,6 +67,7 @@ shiftKeysLeft(CmdGen *cg, int i)
 void
 usedCmd(CmdGen *cg)
 {
-    cg->prev = cg->curr;
+    if (cg->curr.num > 0)
+        cg->prev = cg->curr;
     cg->curr = (Cmd){0};
 }

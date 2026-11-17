@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits.h>
+
 typedef struct Cmd Cmd;
 struct Cmd {
     int num;

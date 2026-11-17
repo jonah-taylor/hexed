@@ -20,8 +20,8 @@ typedef struct Tile Tile;
 struct Tile {
     Buf *buf;
     LBkCv *lbkcv;
-    Cursor curs;
-    Rect rect;
+    Cursor *curs;
+    Rect *rect;
 };
 
 Tile *initTile(Rect rect, Buf *buf);
