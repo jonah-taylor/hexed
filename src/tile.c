@@ -44,8 +44,11 @@ initTile(Rect rect, Buf *buf)
 void
 freeTile(Tile *tile)
 {
+    int i;
     free(tile->rect);
     free(tile->curs);
+    for (i = tile->lbkcv->len - 1; i >= 0; i--)
+        free(tile->lbkcv->items[i].curs);
     freeLBkCv(tile->lbkcv);
     free(tile);
 }
@@ -56,10 +59,13 @@ saveCursToBkCv(Tile *t)
     int i;
     BkCv *oth;
     BkCv bkcv;
+    Cursor *c;
+    c = xcalloc(sizeof(Cursor));
+    *c = *t->curs;
 
     bkcv = (BkCv){
         .buf = t->buf,
-        .curs = *t->curs,
+        .curs = c,
     };
 
     for (i = 0; i < t->lbkcv->len; i++) {
@@ -80,7 +86,7 @@ getCursFromBkCv(Tile *t)
     for (i = 0; i < t->lbkcv->len; i++) {
         oth = &t->lbkcv->items[i];
         if (t->buf == oth->buf) {
-            return oth->curs;
+            return *oth->curs;
         }
     }
     return (Cursor){0};
@@ -93,8 +99,10 @@ rmBkCv(Tile *t, Buf *buf)
     BkCv *oth;
     for (i = 0; i < t->lbkcv->len; i++) {
         oth = &t->lbkcv->items[i];
-        if (buf == oth->buf)
+        if (buf == oth->buf) {
+            free(oth->curs);
             lbkcvRm(t->lbkcv, i);
+        }
     }
 }
 

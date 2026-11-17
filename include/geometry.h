@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-
 typedef struct Rect Rect;
 struct Rect
 {

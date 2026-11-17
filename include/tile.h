@@ -13,7 +13,7 @@ typedef struct Rect Rect;
 typedef struct BkCv BkCv; // buffer key, cursor value
 struct BkCv {
     Buf *buf; // key
-    Cursor curs; // val
+    Cursor *curs; // val
 };
 
 typedef struct Tile Tile;

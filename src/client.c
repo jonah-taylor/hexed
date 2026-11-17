@@ -1,14 +1,4 @@
-#include <arpa/inet.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include "client.h"
 
 static int is_dir(const char *path);
 static void send_abspath(int fd, struct sockaddr_in dest,

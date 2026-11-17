@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-#include <stdlib.h>
-
 typedef struct Cursor Cursor;
 struct Cursor {
     int ln;
