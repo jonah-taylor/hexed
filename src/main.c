@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <limits.h>
 
 #include "app.h"
 #include "buf.h"
@@ -314,6 +315,17 @@ tryCmd(App *app)
         case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); return USED;
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
+
+    case 'v':
+        app->mode = CHHIGHLIGHT;
+        tile->curs->vln = tile->curs->ln;
+        tile->curs->vch = tile->curs->ch;
+        return USED;
+
+    case 'V':
+        app->mode = LNHIGHLIGHT;
+        tile->curs->vln = tile->curs->ln;
+        return USED;
 
     case 'x': rmNextCh(tile); return USED;
 

@@ -13,6 +13,8 @@ enum Mode : int {
     RESIZING,
     TYPING,
     EDITING,
+    CHHIGHLIGHT,
+    LNHIGHLIGHT,
 };
 typedef enum Mode Mode;
 

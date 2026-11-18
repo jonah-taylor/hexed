@@ -72,8 +72,9 @@ void
 drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode, Cmd *cmd)
 {
     int i;
-    for (i = 0; i < tiler->ts_len; i++)
+    for (i = 0; i < tiler->ts_len; i++) {
         drawTileOnFrame(tiler->tiles[i], frame, mode, cmd);
+    }
 }
 
 void

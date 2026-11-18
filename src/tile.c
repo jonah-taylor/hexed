@@ -9,6 +9,11 @@
 #include "utils/list.h"
 #include "utils/xmem.h"
 
+#define RESZCOL 9 // red
+#define SPACECOL 247 // light gray
+#define HLBGCOL 253 // lighter gray
+#define HLFGCOL 0 // white
+
 DEF_LIST(LCh, char, lch)
 DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBkCv, BkCv, lbkcv)
@@ -17,10 +22,12 @@ static void roundCursInBounds(Tile *t);
 inline static void setTileCell(Rect *r, Frame *f, int *y, int *x, Cell c);
 inline static int calcNumLen(int lns);
 static void drawNumOnFrame(Tile *t, Frame *f, int fg, int x, int y, int n);
-static void drawLnOnFrame(Tile *t, Frame *f, int x, int y, int ln_i);
+static void drawLnOnFrame(Tile *t, Frame *f, Mode mode, int x, int y, int ln_i);
 static void drawBufNameOnFrame(Tile *t, Frame *f, int x, int y);
 static void drawCmdOnFrame(Tile *t, Cmd *cmd, Frame *f, int x, int y);
 static int calcLnHeight(Rect *r, int *ln_len, int *xpadn);
+static int isChHilit(Tile *t, int *ln, int *ch);
+static int isLnHilit(Tile *t, int *ln);
 
 Tile*
 initTile(Rect rect, Buf *buf)
@@ -120,7 +127,7 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m, Cmd *c)
     lns = t->buf->lns;
     r = fixedFromPercRect(*t->rect);
     xpadn = calcNumLen(lns->len);
-    num_fg = (m == RESIZING) ? 31 : 0;
+    num_fg = (m == RESIZING) ? RESZCOL : 0;
 
     // draw line at cursor
     y = (r.y2 - r.y1) / 2;
@@ -128,7 +135,7 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m, Cmd *c)
     x = calcNumLen(ln_i + 1);
     drawNumOnFrame(t, f, num_fg, y, x, (ln_i + 1));
     x = xpadn + 2;
-    drawLnOnFrame(t, f, y, x, ln_i);
+    drawLnOnFrame(t, f, m, y, x, ln_i);
 
     // draw lines under cursor
     y = (r.y2 - r.y1) / 2;
@@ -138,12 +145,12 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m, Cmd *c)
         x = xpadn;
         drawNumOnFrame(t, f, num_fg, y, x, (ln_i - t->curs->ln));
         x = xpadn + 2;
-        drawLnOnFrame(t, f, y, x, ln_i);
+        drawLnOnFrame(t, f, m, y, x, ln_i);
     }
     // ~ filler
     y++;
     for (x = 0; y < (r.y2 - r.y1) - 1; y++)
-        setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = 90});
+        setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = SPACECOL});
 
     // draw lines above cursor
     y = (r.y2 - r.y1) / 2;
@@ -153,13 +160,13 @@ drawTileOnFrame(Tile *t, Frame *f, Mode m, Cmd *c)
         x = xpadn;
         drawNumOnFrame(t, f, num_fg, y, x, (t->curs->ln - ln_i));
         x = xpadn + 2;
-        drawLnOnFrame(t, f, y, x, ln_i);
+        drawLnOnFrame(t, f, m, y, x, ln_i);
     }
 
     // ~ filler
     y--;
     for (x = 0; y >= 0; y--)
-        setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = 90});
+        setTileCell(&r, f, &y, &x, (Cell){.str = "~", .fg = SPACECOL});
 
     x = (r.x2 - r.x1) - strlen(t->buf->name) - 1;
     y = (r.y2 - r.y1) - 1;
@@ -560,6 +567,16 @@ roundCursInBounds(Tile *t)
         t->curs->ch = lns->items[t->curs->ln]->len;
     if (t->curs->ch < 0)
         t->curs->ch = 0;
+
+    if (t->curs->vln >= lns->len)
+        t->curs->vln = lns->len - 1;
+    if (t->curs->vln < 0)
+        t->curs->vln = 0;
+
+    if (t->curs->vch >= lns->items[t->curs->vln]->len)
+        t->curs->vch = lns->items[t->curs->vln]->len;
+    if (t->curs->vch < 0)
+        t->curs->vch = 0;
 }
 
 inline static void
@@ -584,17 +601,12 @@ calcNumLen(int lns)
 }
 
 static void
-drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
+drawLnOnFrame(Tile *t, Frame *f, Mode m, int y, int x, int ln_i)
 {
-    int ch_i, xpadn;
+    int ch_i, xpadn, fg, bg;
     Rect r;
     LLCh *lns;
     char ch;
-
-    Cell bar, dot;
-
-    bar = (Cell){.str = {(char)0xE2, (char)0x94, (char)0x82, 0}, .fg = 90};
-    dot = (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0}, .fg = 90};
 
     r = fixedFromPercRect(*t->rect);
     r.y2--;
@@ -604,16 +616,27 @@ drawLnOnFrame(Tile *t, Frame *f, int y, int x, int ln_i)
 
     // draw each line char
     for (ch_i = 0; ch_i < lns->items[ln_i]->len; ch_i++) {
+        fg = 0;
+        bg = 0;
+        if ((m == CHHIGHLIGHT && isChHilit(t, &ln_i, &ch_i))
+                || (m == LNHIGHLIGHT && isLnHilit(t, &ln_i))) {
+            fg = HLFGCOL;
+            bg = HLBGCOL;
+        }
         ch = lns->items[ln_i]->items[ch_i];
         if (ch == ' ')
             if (ch_i % 4 == 0
                     && ch_i + 3 < lns->items[ln_i]->len
                     && strncmp(lns->items[ln_i]->items + ch_i, "    ", 4) == 0)
-                setTileCell(&r, f, &y, &x, bar);
+                setTileCell(&r, f, &y, &x, 
+                        (Cell){.str = {(char)0xE2, (char)0x94, (char)0x82, 0},
+                        .fg = SPACECOL, .bg = bg});
             else
-                setTileCell(&r, f, &y, &x, dot);
+                setTileCell(&r, f, &y, &x, 
+                        (Cell){.str = {(char)0xC2, (char)0xB7, 0, 0},
+                        .fg = SPACECOL, .bg = bg});
         else
-            setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}});
+            setTileCell(&r, f, &y, &x, (Cell){.str = {ch, '\0'}, .fg = fg, .bg = bg});
 
         x++;
 
@@ -696,3 +719,56 @@ calcLnHeight(Rect *r, int *ln_len, int *xpadn)
         return ((*ln_len + ch_wid - 1) / ch_wid);
 }
 
+static int
+isChHilit(Tile *t, int *ln, int *ch)
+{
+    int loln, hiln, loch, hich;
+    Cursor *curs = t->curs;
+
+    loln = curs->ln;
+    loch = curs->ch;
+    hiln = curs->ln;
+    hich = curs->ch;
+
+    if (curs->vln < curs->ln) {
+        loln = curs->vln;
+        loch = curs->vch;
+    } else if (curs->vln == curs->ln) {
+        if (curs->vch <= curs->ch) {
+            loln = curs->vln;
+            loch = curs->vch;
+        } else {
+            hiln = curs->vln;
+            hich = curs->vch;
+        }
+    } else {
+        hiln = curs->vln;
+        hich = curs->vch;
+    }
+
+    if (*ln < loln || *ln > hiln)
+        return false;
+    if (*ln == loln && *ch < loch)
+        return false;
+    if (*ln == hiln && *ch > hich)
+        return false;
+
+    return true;
+}
+
+static int
+isLnHilit(Tile *t, int *ln)
+{
+    int loln, hiln;
+    Cursor *curs = t->curs;
+
+    loln = curs->ln;
+    hiln = curs->ln;
+
+    if (curs->vln < curs->ln)
+        loln = curs->vln;
+    else
+        hiln = curs->vln;
+
+    return *ln >= loln && *ln <= hiln;
+}

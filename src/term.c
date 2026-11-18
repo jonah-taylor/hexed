@@ -77,9 +77,9 @@ setColors(int fg, int bg)
     if (fg <= 0 || bg <= 0)
         printf("\x1b[0m");
     if (fg > 0)
-        printf("\x1b[%dm", fg);
+        printf("\033[38;5;%dm", fg);
     if (bg > 0)
-        printf("\x1b[%dm", fg);
+        printf("\033[48;5;%dm", bg);
 }
 
 void

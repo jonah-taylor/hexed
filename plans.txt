@@ -1,6 +1,6 @@
 FEATURES
 
-Highlighting
+Text Mode to spacebar
 
 Saving the buffer to the file
 
