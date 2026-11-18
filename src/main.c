@@ -201,21 +201,27 @@ tryCmd(App *app, Cmd *c)
         if (app->mode == CHHIGHLIGHT) {
             tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
             app->mode = TYPING;
-            setCursorLine();
+            setCursorBar();
+            return USED;
+        }
+        if (app->mode == LNHIGHLIGHT) {
+            tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
+            app->mode = TYPING;
+            setCursorBar();
             return USED;
         }
         if (c->klen == 1) return INCOMPLETE;
         key = c->keys[1];
         switch (key) {
-        case 'c': rmLn(tile); app->mode = TYPING; setCursorLine();
+        case 'c': rmLn(tile); app->mode = TYPING; setCursorBar();
                   return USED;
-        case 'h': rmLnBeforeCurs(tile); app->mode = TYPING; setCursorLine();
+        case 'h': rmLnBeforeCurs(tile); app->mode = TYPING; setCursorBar();
                   return USED;
-        case 'l': rmLnAfterCurs(tile); app->mode = TYPING; setCursorLine();
+        case 'l': rmLnAfterCurs(tile); app->mode = TYPING; setCursorBar();
                   return USED;
-        case 'j': rmLnBelow(tile); app->mode = TYPING; setCursorLine();
+        case 'j': rmLnBelow(tile); app->mode = TYPING; setCursorBar();
                   return USED;
-        case 'k': rmLnAbove(tile); app->mode = TYPING; setCursorLine();
+        case 'k': rmLnAbove(tile); app->mode = TYPING; setCursorBar();
                   return USED;
         case 'w':
             app->mode = CHHIGHLIGHT;
@@ -235,6 +241,16 @@ tryCmd(App *app, Cmd *c)
             while (tile->curs->ch > tile->curs->vch)
                 typeBksp(tile);
             app->mode = EDITING;
+            setCursorBlock();
+            return USED;
+        }
+
+        if (app->mode == LNHIGHLIGHT) {
+            swapVCursToBot(tile->curs);
+            for (idx = tile->curs->vln - tile->curs->ln + 1; idx > 0; idx--)
+                rmLn(tile);
+            app->mode = EDITING;
+            setCursorBlock();
             return USED;
         }
 
@@ -346,11 +362,14 @@ tryCmd(App *app, Cmd *c)
         app->mode = CHHIGHLIGHT;
         tile->curs->vln = tile->curs->ln;
         tile->curs->vch = tile->curs->ch;
+        setCursorSolidBar();
         return USED;
 
     case 'V':
         app->mode = LNHIGHLIGHT;
         tile->curs->vln = tile->curs->ln;
+        tile->curs->vch = tile->curs->ch;
+        setCursorSolidBar();
         return USED;
 
     case 'w':
@@ -365,7 +384,7 @@ tryCmd(App *app, Cmd *c)
 
     case 'x': rmNextCh(tile); return USED;
 
-    case ' ': app->mode = TYPING; setCursorLine(); return USED;
+    case ' ': app->mode = TYPING; setCursorBar(); return USED;
 
     case '<': unindentLnFront(tile); return USED;
     case '>': indentLnFront(tile); return USED;

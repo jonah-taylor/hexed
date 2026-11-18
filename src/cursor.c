@@ -27,3 +27,12 @@ swapVCursToTop(Cursor *curs)
         curs->ch++;
     }
 }
+
+void
+swapVCursToBot(Cursor *curs)
+{
+    swapVCursToTop(curs);
+    SWAP(curs->vln, curs->ln);
+    SWAP(curs->vch, curs->ch);
+}
+

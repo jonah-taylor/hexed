@@ -14,3 +14,4 @@ struct Cursor {
 };
 
 void swapVCursToTop(Cursor *curs);
+void swapVCursToBot(Cursor *curs);

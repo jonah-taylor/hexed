@@ -34,7 +34,13 @@ hideCursor()
 }
 
 void
-setCursorLine()
+setCursorBar()
+{
+    printf("\x1b[5 q");
+}
+
+void
+setCursorSolidBar()
 {
     printf("\x1b[6 q");
 }

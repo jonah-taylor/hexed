@@ -24,7 +24,8 @@ int getch();
 void showCursor();
 void hideCursor();
 
-void setCursorLine();
+void setCursorBar();
+void setCursorSolidBar();
 void setCursorBlock();
 
 void saveCursorPos();
