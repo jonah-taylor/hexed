@@ -12,3 +12,5 @@ struct Cursor {
     int vln;
     int vch;
 };
+
+void swapVCursToTop(Cursor *curs);

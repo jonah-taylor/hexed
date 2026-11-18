@@ -18,7 +18,7 @@
 DEF_LIST(LBuf, Buf*, lb)
 
 static void freeApp(App *app);
-static int tryCmd(App *app);
+static int tryCmd(App *app, Cmd *cmd);
 
 enum CmdStat {
     USED,
@@ -100,10 +100,10 @@ main(int argc, char *argv[])
 
         getchForCmd(app->cg);
         do {
-            cmdstat = tryCmd(app);
+            cmdstat = tryCmd(app, &app->cg->curr);
             if (cmdstat == USED) {
                 for (i = 1; i < app->cg->curr.num; i++)
-                    cmdstat = tryCmd(app);
+                    cmdstat = tryCmd(app, &app->cg->curr);
                 usedCmd(app->cg);
             } else if (cmdstat == QUIT)
                 goto cleanup;
@@ -118,14 +118,13 @@ cleanup:
 }
 
 static int
-tryCmd(App *app)
+tryCmd(App *app, Cmd *c)
 {
-    Cmd *c, cmd_copy;
+    Cmd cmd_copy;
     Tile *tile;
     char key;
     int idx;
 
-    c = &app->cg->curr;
     tile = getSel(app->tiler);
 
     if (c->klen == 0)
@@ -135,15 +134,8 @@ tryCmd(App *app)
     // mode agnostic
     switch (key) {
     case '\t':
-        if (app->mode == EDITING) {
-            app->mode = TYPING;
-            setCursorLine();
-        }
-        else {
-            app->mode = EDITING;
-            setCursorBlock();
-        }
-        *c = (Cmd){0};
+        app->mode = EDITING;
+        setCursorBlock();
         return USED;
     case '\x08': // backspace
     case '\x7f':
@@ -206,6 +198,12 @@ tryCmd(App *app)
         return USED;
 
     case 'c':
+        if (app->mode == CHHIGHLIGHT) {
+            tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
+            app->mode = TYPING;
+            setCursorLine();
+            return USED;
+        }
         if (c->klen == 1) return INCOMPLETE;
         key = c->keys[1];
         switch (key) {
@@ -219,12 +217,27 @@ tryCmd(App *app)
                   return USED;
         case 'k': rmLnAbove(tile); app->mode = TYPING; setCursorLine();
                   return USED;
+        case 'w':
+            app->mode = CHHIGHLIGHT;
+            tryCmd(app, &(Cmd){.keys = "w", .klen = 1, .num = 0});
+            tryCmd(app, &(Cmd){.keys = "c", .klen = 1, .num = 0});
+            return USED;
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
     case 'C': rotTilesCW(app->tiler); return USED;
 
     case 'd':
+        if (app->mode == CHHIGHLIGHT) {
+            swapVCursToTop(tile->curs);
+            while (tile->curs->ln > tile->curs->vln)
+                typeBksp(tile);
+            while (tile->curs->ch > tile->curs->vch)
+                typeBksp(tile);
+            app->mode = EDITING;
+            return USED;
+        }
+
         if (c->klen == 1) return INCOMPLETE;
         key = c->keys[1];
         switch (key) {
@@ -233,6 +246,11 @@ tryCmd(App *app)
         case 'l': rmLnAfterCurs(tile); return USED;
         case 'j': rmLnBelow(tile); return USED;
         case 'k': rmLnAbove(tile); return USED;
+        case 'w':
+            app->mode = CHHIGHLIGHT;
+            tryCmd(app, &(Cmd){.keys = "w", .klen = 1, .num = 0});
+            tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
+            return USED;
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
@@ -242,7 +260,8 @@ tryCmd(App *app)
               reszSel(app->tiler, LEFT, true) : mvLeft(tile);
         return USED;
 
-    case 'H': selTileInCursorDir(app->tiler, LEFT); return USED;
+    case 'H': selTileInCursorDir(app->tiler, LEFT);
+              app->mode = EDITING; return USED;
     case 'i': mvFastLeft(tile); return USED;
     case 'I': mvFullLeft(tile); return USED;
 
@@ -250,19 +269,22 @@ tryCmd(App *app)
             reszSel(app->tiler, DOWN, true) : mvDown(tile);
         return USED;
 
-    case 'J': selTileInCursorDir(app->tiler, DOWN); return USED;
+    case 'J': selTileInCursorDir(app->tiler, DOWN);
+              app->mode = EDITING; return USED;
 
     case 'k': (app->mode == RESIZING) ?
-            reszSel(app->tiler, UP, true) : mvUp(tile);
-        return USED;
+        reszSel(app->tiler, UP, true) : mvUp(tile); return USED;
 
-    case 'K': selTileInCursorDir(app->tiler, UP); return USED;
+    case 'K': selTileInCursorDir(app->tiler, UP);
+              app->mode = EDITING; return USED;
 
     case 'l': (app->mode == RESIZING) ?
             reszSel(app->tiler, RIGHT, true) : mvRight(tile);
         return USED;
 
-    case 'L': selTileInCursorDir(app->tiler, RIGHT); return USED;
+    case 'L': selTileInCursorDir(app->tiler, RIGHT);
+              app->mode = EDITING; return USED;
+
     case 'm': jmpDown(tile, 10); return USED;
     case 'M': jmpUp(tile, 10); return USED;
     case 'n': newLnBelow(tile); return USED;
@@ -286,7 +308,7 @@ tryCmd(App *app)
         shiftKeysLeft(app->cg, 1);
         rmNextCh(tile);
         app->mode = TYPING;
-        tryCmd(app);
+        tryCmd(app, &app->cg->curr);
         *c = cmd_copy;
         app->mode = EDITING;
         mvLeft(tile);
@@ -309,10 +331,14 @@ tryCmd(App *app)
             return INCOMPLETE;
         key = c->keys[1];
         switch(key) {
-        case 'h': newTile(app->tiler, LEFT, app->lbufs->items[0]); return USED;
-        case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]); return USED;
-        case 'k': newTile(app->tiler, UP, app->lbufs->items[0]); return USED;
-        case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]); return USED;
+        case 'h': newTile(app->tiler, LEFT, app->lbufs->items[0]);
+                  app->mode = EDITING; return USED;
+        case 'j': newTile(app->tiler, DOWN, app->lbufs->items[0]);
+                  app->mode = EDITING; return USED;
+        case 'k': newTile(app->tiler, UP, app->lbufs->items[0]);
+                  app->mode = EDITING; return USED;
+        case 'l': newTile(app->tiler, RIGHT, app->lbufs->items[0]);
+                  app->mode = EDITING; return USED;
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
@@ -327,7 +353,19 @@ tryCmd(App *app)
         tile->curs->vln = tile->curs->ln;
         return USED;
 
+    case 'w':
+        if (app->mode != CHHIGHLIGHT)
+            return USED; // TODO
+        mvFastRight(tile);
+        mvFastLeft(tile);
+        tile->curs->vln = tile->curs->ln;
+        tile->curs->vch = tile->curs->ch;
+        mvFastRight(tile);
+        return USED;
+
     case 'x': rmNextCh(tile); return USED;
+
+    case ' ': app->mode = TYPING; setCursorLine(); return USED;
 
     case '<': unindentLnFront(tile); return USED;
     case '>': indentLnFront(tile); return USED;

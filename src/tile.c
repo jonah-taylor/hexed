@@ -728,7 +728,7 @@ isChHilit(Tile *t, int *ln, int *ch)
     loln = curs->ln;
     loch = curs->ch;
     hiln = curs->ln;
-    hich = curs->ch;
+    hich = curs->ch - 1;
 
     if (curs->vln < curs->ln) {
         loln = curs->vln;

@@ -72,8 +72,13 @@ void
 drawTilesOnFrame(Tiler *tiler, Frame *frame, Mode mode, Cmd *cmd)
 {
     int i;
+    Mode fm;
     for (i = 0; i < tiler->ts_len; i++) {
-        drawTileOnFrame(tiler->tiles[i], frame, mode, cmd);
+        fm = mode;
+        if (fm == LNHIGHLIGHT || fm == CHHIGHLIGHT)
+            if (i != tiler->sel_idx)
+                fm = EDITING;
+        drawTileOnFrame(tiler->tiles[i], frame, fm, cmd);
     }
 }
 
