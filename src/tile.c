@@ -772,3 +772,42 @@ isLnHilit(Tile *t, int *ln)
 
     return *ln >= loln && *ln <= hiln;
 }
+
+LCh*
+strFromHL(Tile *t, Mode m)
+{
+    int ln_i, ch_i, ch_end;
+    LLCh *lns;
+    LCh *ret;
+    Cursor scurs;
+
+    lns = t->buf->lns;
+    scurs = *t->curs;
+
+    ret = initLCh();
+
+    if (m == CHHIGHLIGHT) {
+        swapVCursToBot(t->curs);
+        for (ln_i = t->curs->ln; ln_i <= t->curs->vln; ln_i++) {
+            ch_i = (ln_i == t->curs->ln) ? t->curs->ch : 0;
+            ch_end = (ln_i == t->curs->vln) ? t->curs->vch : lns->items[ln_i]->len;
+            for (; ch_i < ch_end; ch_i++)
+                lchPush(ret, lns->items[ln_i]->items[ch_i]);
+        }
+    } else if (m == LNHIGHLIGHT) {
+        swapVCursToBot(t->curs);
+        for (ln_i = t->curs->ln; ln_i <= t->curs->vln; ln_i++) {
+            for (ch_i = 0; ch_i < lns->items[ln_i]->len; ch_i++)
+                lchPush(ret, lns->items[ln_i]->items[ch_i]);
+            lchPush(ret, '\n');
+        }
+        lchPop(ret);
+    } else {
+        if (t->curs->ch != lns->items[t->curs->ln]->len)
+            lchPush(ret, lns->items[t->curs->ln]->items[t->curs->ch]);
+    }
+    lchPush(ret, '\0');
+    *t->curs = scurs;
+
+    return ret;
+}

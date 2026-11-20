@@ -8,6 +8,7 @@ typedef struct Cmd Cmd;
 typedef struct Cursor Cursor;
 typedef struct Frame Frame;
 typedef struct LBkCv LBkCv;
+typedef struct LCh LCh;
 typedef struct Rect Rect;
 
 typedef struct BkCv BkCv; // buffer key, cursor value
@@ -67,3 +68,5 @@ void rmNextCh(Tile *t);
 
 void unindentLnFront(Tile *t);
 void indentLnFront(Tile *t);
+
+LCh* strFromHL(Tile *t, Mode m);

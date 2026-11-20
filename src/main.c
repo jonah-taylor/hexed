@@ -15,10 +15,14 @@
 #include "utils/list.h"
 #include "utils/xmem.h"
 
+DEF_LIST(LCh, char, lch)
+DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBuf, Buf*, lb)
 
 static void freeApp(App *app);
 static int tryCmd(App *app, Cmd *cmd);
+static int writeToClipboard(char *text);
+static int readClipboardInto(LCh* ret);
 
 enum CmdStat {
     USED,
@@ -122,6 +126,7 @@ tryCmd(App *app, Cmd *c)
 {
     Cmd cmd_copy;
     Tile *tile;
+    LCh* str;
     char key;
     int idx;
 
@@ -308,6 +313,16 @@ tryCmd(App *app, Cmd *c)
     case 'o': mvFastRight(tile); return USED;
     case 'O': mvFullRight(tile); return USED;
 
+    case 'p':
+        str = initLCh();
+        readClipboardInto(str);
+        app->mode = TYPING;
+        for (idx = 0; idx < str->len; idx++)
+            tryCmd(app, &(Cmd){.keys = {str->items[idx]}, .klen = 1, .num = 0});
+        freeLCh(str);
+        app->mode = EDITING;
+        return USED;
+
     case 'q':
         if (c->klen == 1) return INCOMPLETE;
         key = c->keys[1];
@@ -384,6 +399,13 @@ tryCmd(App *app, Cmd *c)
 
     case 'x': rmNextCh(tile); return USED;
 
+    case 'y':
+        str = strFromHL(tile, app->mode);
+        writeToClipboard(str->items);
+        freeLCh(str);
+        app->mode = EDITING; setCursorBlock();
+        return USED;
+
     case ' ': app->mode = TYPING; setCursorBar(); return USED;
 
     case '<': unindentLnFront(tile); return USED;
@@ -414,9 +436,8 @@ freeApp(App *app)
 {
     int i;
 
-    for (i = 0; i < app->lbufs->len; i++) {
+    for (i = 0; i < app->lbufs->len; i++)
         freeBuf(app->lbufs->items[i]);
-    }
     freeCmdGen(app->cg);
     freeLBuf(app->lbufs);
     freeFrame(app->frame);
@@ -424,5 +445,33 @@ freeApp(App *app)
     close(app->fd);
 
     free(app);
+}
+
+static int
+writeToClipboard(char *text)
+{
+    FILE *f;
+    f = popen("wl-copy", "w");
+    if (!f) return 0;
+    fwrite(text, 1, strlen(text), f);
+    return pclose(f) == 0;
+}
+
+static int
+readClipboardInto(LCh* ret)
+{
+    FILE *f;
+    char buf[2048];
+    int i, n;
+
+    f = popen("wl-paste --no-newline", "r");
+    if (!f) return 0;
+
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        for (i = 0; i < n; i++)
+            lchPush(ret, buf[i]);
+    }
+
+    return pclose(f) == 0;
 }
 
