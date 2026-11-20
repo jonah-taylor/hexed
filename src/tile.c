@@ -773,7 +773,7 @@ isLnHilit(Tile *t, int *ln)
     return *ln >= loln && *ln <= hiln;
 }
 
-LCh*
+char*
 strFromHL(Tile *t, Mode m)
 {
     int ln_i, ch_i, ch_end;
@@ -781,10 +781,9 @@ strFromHL(Tile *t, Mode m)
     LCh *ret;
     Cursor scurs;
 
+    ret = initLCh();
     lns = t->buf->lns;
     scurs = *t->curs;
-
-    ret = initLCh();
 
     if (m == CHHIGHLIGHT) {
         swapVCursToBot(t->curs);
@@ -809,5 +808,5 @@ strFromHL(Tile *t, Mode m)
     lchPush(ret, '\0');
     *t->curs = scurs;
 
-    return ret;
+    return ret->items;
 }

@@ -69,4 +69,4 @@ void rmNextCh(Tile *t);
 void unindentLnFront(Tile *t);
 void indentLnFront(Tile *t);
 
-LCh* strFromHL(Tile *t, Mode m);
+char *strFromHL(Tile *t, Mode m);

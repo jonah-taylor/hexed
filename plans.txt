@@ -1,16 +1,10 @@
 FEATURES
 
-Text Mode to spacebar
+have backspace respond the same way as d when highlighting
+
+Add x keys for cutting
 
 Saving the buffer to the file
-
-Add delete word dw key
-
-Add y to yank
-
-Add p to paste
-
-Add c keys
 
 Add fast travel with f key
 
