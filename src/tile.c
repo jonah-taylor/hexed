@@ -1,6 +1,6 @@
 #include "app.h"
 #include "buf.h"
-#include "cmdgen.h"
+#include "cmd.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
@@ -357,6 +357,7 @@ typeTab(Tile *t)
         lchIns(ln, t->curs->ch, ' ');
         t->curs->ch++;
     } while (t->curs->ch % 4 != 0);
+    t->curs->ideal_ch = t->curs->ch;
 }
 
 void
@@ -778,10 +779,11 @@ strFromHL(Tile *t, Mode m)
 {
     int ln_i, ch_i, ch_end;
     LLCh *lns;
-    LCh *ret;
+    LCh *lch;
+    char* ret_str;
     Cursor scurs;
 
-    ret = initLCh();
+    lch = initLCh();
     lns = t->buf->lns;
     scurs = *t->curs;
 
@@ -791,22 +793,25 @@ strFromHL(Tile *t, Mode m)
             ch_i = (ln_i == t->curs->ln) ? t->curs->ch : 0;
             ch_end = (ln_i == t->curs->vln) ? t->curs->vch : lns->items[ln_i]->len;
             for (; ch_i < ch_end; ch_i++)
-                lchPush(ret, lns->items[ln_i]->items[ch_i]);
+                lchPush(lch, lns->items[ln_i]->items[ch_i]);
         }
     } else if (m == LNHIGHLIGHT) {
         swapVCursToBot(t->curs);
         for (ln_i = t->curs->ln; ln_i <= t->curs->vln; ln_i++) {
             for (ch_i = 0; ch_i < lns->items[ln_i]->len; ch_i++)
-                lchPush(ret, lns->items[ln_i]->items[ch_i]);
-            lchPush(ret, '\n');
+                lchPush(lch, lns->items[ln_i]->items[ch_i]);
+            lchPush(lch, '\n');
         }
-        lchPop(ret);
+        lchPop(lch);
     } else {
         if (t->curs->ch != lns->items[t->curs->ln]->len)
-            lchPush(ret, lns->items[t->curs->ln]->items[t->curs->ch]);
+            lchPush(lch, lns->items[t->curs->ln]->items[t->curs->ch]);
     }
-    lchPush(ret, '\0');
+    lchPush(lch, '\0');
     *t->curs = scurs;
 
-    return ret->items;
+    ret_str = lch->items;
+    free(lch);
+
+    return ret_str;
 }

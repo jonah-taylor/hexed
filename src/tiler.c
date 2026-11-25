@@ -1,7 +1,7 @@
 #include "app.h"
 #include "buf.h"
 #include "cursor.h"
-#include "cmdgen.h"
+#include "cmd.h"
 #include "frame.h"
 #include "geometry.h"
 #include "term.h"

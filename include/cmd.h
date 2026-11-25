@@ -18,6 +18,6 @@ struct CmdGen {
 CmdGen *initCmdGen();
 void freeCmdGen(CmdGen *cg);
 
-void getchForCmd(CmdGen *cg);
+void getchForCmd(CmdGen *cg, int is_typing_mode);
 void shiftKeysLeft(CmdGen *cg, int i);
 void usedCmd(CmdGen *cg);

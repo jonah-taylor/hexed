@@ -1,4 +1,4 @@
-#include "cmdgen.h"
+#include "cmd.h"
 #include "term.h"
 
 #include "utils/xmem.h"
@@ -20,7 +20,7 @@ freeCmdGen(CmdGen *cg)
 }
 
 void
-getchForCmd(CmdGen *cg)
+getchForCmd(CmdGen *cg, int is_typing_mode)
 {
     char key;
     Cmd *c;
@@ -29,7 +29,7 @@ getchForCmd(CmdGen *cg)
     c = &cg->curr;
 
     // handle number
-    if (key >= '0' && key <= '9' && c->num < NUM_CAP) {
+    if (!is_typing_mode && key >= '0' && key <= '9' && c->num < NUM_CAP) {
         c->num *= 10;
         c->num += (key - '0');
         if (c->num >= NUM_CAP)

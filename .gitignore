@@ -1,1 +1,3 @@
 /build/
+.Module.symvers.cmd
+.modules.order.cmd

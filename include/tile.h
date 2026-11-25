@@ -9,6 +9,7 @@ typedef struct Cursor Cursor;
 typedef struct Frame Frame;
 typedef struct LBkCv LBkCv;
 typedef struct LCh LCh;
+enum Mode : int;
 typedef struct Rect Rect;
 
 typedef struct BkCv BkCv; // buffer key, cursor value

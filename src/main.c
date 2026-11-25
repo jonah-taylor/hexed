@@ -4,7 +4,7 @@
 #include "app.h"
 #include "buf.h"
 #include "client.h"
-#include "cmdgen.h"
+#include "cmd.h"
 #include "cursor.h"
 #include "frame.h"
 #include "geometry.h"
@@ -99,7 +99,7 @@ main(int argc, char *argv[])
         updateCursor(getSel(app->tiler));
         fflush(stdout);
 
-        getchForCmd(app->cg);
+        getchForCmd(app->cg, app->mode == TYPING);
         do {
             cmdstat = tryCmd(app, &app->cg->curr);
             if (cmdstat == USED) {
@@ -137,10 +137,14 @@ tryCmd(App *app, Cmd *c)
     case '\t':
         app->mode = EDITING;
         setCursorBlock();
+        pushUndo(tile->buf, tile->curs);
         return USED;
     case '\x08': // backspace
     case '\x7f':
-        typeBksp(tile);
+        if (app->mode == LNHIGHLIGHT || app->mode == CHHIGHLIGHT)
+            tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
+        else
+            typeBksp(tile);
         return USED;
     case '\r':
     case '\n':
@@ -208,7 +212,7 @@ tryCmd(App *app, Cmd *c)
         if (app->mode == LNHIGHLIGHT) {
             tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
             app->mode = TYPING;
-            setCursorBar();
+            setCursorBlock();
             return USED;
         }
         if (c->klen == 1) return INCOMPLETE;
@@ -272,6 +276,26 @@ tryCmd(App *app, Cmd *c)
         }
 
     case 'D': rmSel(app->tiler); return USED;
+
+    // case 'f':
+    //     if (c->klen == 1) return INCOMPLETE;
+    //     key = c->keys[1];
+    //     switch (key) {
+
+    //     }
+    //     return USED:
+
+
+    case 'g':
+        if (c->num <= 0)
+            tile->curs->ln = 0;
+        else
+            tile->curs->ln = c->num - 1;
+        return USED;
+
+    // case 'G':
+    //     // moveToTileNumber
+    //     return USED;
 
     case 'h': (app->mode == RESIZING) ?
               reszSel(app->tiler, LEFT, true) : mvLeft(tile);
@@ -370,6 +394,10 @@ tryCmd(App *app, Cmd *c)
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
+    case 'u':
+        popUndo(tile->buf, tile->curs);
+        return USED;
+
     case 'v':
         app->mode = CHHIGHLIGHT;
         tile->curs->vln = tile->curs->ln;
@@ -381,7 +409,7 @@ tryCmd(App *app, Cmd *c)
         app->mode = LNHIGHLIGHT;
         tile->curs->vln = tile->curs->ln;
         tile->curs->vch = tile->curs->ch;
-        setCursorSolidBar();
+        setCursorBlock();
         return USED;
 
     case 'w':
@@ -394,7 +422,17 @@ tryCmd(App *app, Cmd *c)
         mvFastRight(tile);
         return USED;
 
-    case 'x': rmNextCh(tile); return USED;
+    case 'x':
+
+        if (app->mode == LNHIGHLIGHT || app->mode == CHHIGHLIGHT) {
+            str = strFromHL(tile, app->mode);
+            writeToClipboard(str);
+            free(str);
+            tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
+            app->mode = EDITING; setCursorBlock();
+        } else
+            rmNextCh(tile);
+        return USED;
 
     case 'y':
         str = strFromHL(tile, app->mode);
@@ -403,7 +441,8 @@ tryCmd(App *app, Cmd *c)
         app->mode = EDITING; setCursorBlock();
         return USED;
 
-    case ' ': app->mode = TYPING; setCursorBar(); return USED;
+    case ' ': app->mode = TYPING; setCursorBar();
+            pushUndo(tile->buf, tile->curs); return USED;
 
     case '<': unindentLnFront(tile); return USED;
     case '>': indentLnFront(tile); return USED;
