@@ -11,6 +11,8 @@ DEF_LIST(LLCh, LCh*, llch)
 DEF_LIST(LBuf, Buf*, lb)
 DEF_LIST(LDif, Dif*, ld)
 
+static Dif* newDifOnChng(Buf *buf, Cursor *curs);
+static void freeDif(Dif *dif);
 static void freeLDifContents(LDif *ldif);
 static int lnEq(LCh *a, LCh *b);
 static void wipeBufLns(Buf *buf);
@@ -109,7 +111,106 @@ loadBufList(Buf *buf, LBuf *lbuf)
 }
 
 void
-pushUndo(Buf *buf, Cursor *curs)
+pushUndo(Buf *buf, Cursor *curs, int clear_redo)
+{
+    Dif *dif;
+
+    // returns on no changes
+    if ((dif = newDifOnChng(buf, curs)) == 0)
+        return;
+
+    // if the undo isn't pushed from a popped redo
+    if (clear_redo)
+        clearRedo(buf);
+
+    updateSnapshot(buf);
+    ldPush(buf->undo, dif);
+}
+
+void
+popUndo(Buf *buf, Cursor *curs)
+{
+    Dif *dif;
+    int ln_i, ch_i;
+
+    pushUndo(buf, curs, 1);
+
+    if (buf->undo->len == 0) return;
+
+    dif = ldPop(buf->undo);
+
+    // destroy new lines
+    for (ln_i = dif->ln_eidx; ln_i >= dif->ln_sidx; ln_i--) {
+        freeLCh(buf->lns->items[ln_i]);
+        llchRm(buf->lns, ln_i);
+    }
+
+    // replace with old lines
+    for (ln_i = 0; ln_i < dif->lns->len; ln_i++) {
+        llchIns(buf->lns, dif->ln_sidx + ln_i, initLCh());
+        for (ch_i = 0;
+                ch_i < dif->lns->items[ln_i]->len;
+                ch_i++) {
+            lchPush(buf->lns->items[dif->ln_sidx + ln_i],
+                    dif->lns->items[ln_i]->items[ch_i]);
+        }
+    }
+
+    ldPush(buf->redo, newDifOnChng(buf, curs));
+
+    // update the cursor
+    *curs = *dif->curs;
+
+    updateSnapshot(buf);
+
+    freeDif(dif);
+}
+
+void
+popRedo(Buf *buf, Cursor *curs)
+{
+    Dif *dif;
+    int ln_i, ch_i;
+
+    if (buf->redo->len == 0) return;
+
+    dif = ldPop(buf->redo);
+
+    // destroy new lines
+    for (ln_i = dif->ln_eidx; ln_i >= dif->ln_sidx; ln_i--) {
+        freeLCh(buf->lns->items[ln_i]);
+        llchRm(buf->lns, ln_i);
+    }
+
+    // replace with old lines
+    for (ln_i = 0; ln_i < dif->lns->len; ln_i++) {
+        llchIns(buf->lns, dif->ln_sidx + ln_i, initLCh());
+        for (ch_i = 0;
+                ch_i < dif->lns->items[ln_i]->len;
+                ch_i++) {
+            lchPush(buf->lns->items[dif->ln_sidx + ln_i],
+                    dif->lns->items[ln_i]->items[ch_i]);
+        }
+    }
+
+    // update the cursor
+    *curs = *dif->curs;
+
+    pushUndo(buf, curs, 0);
+    updateSnapshot(buf);
+
+    freeDif(dif);
+}
+
+void
+clearRedo(Buf *buf)
+{
+    freeLDifContents(buf->redo);
+    buf->redo->len = 0;
+}
+
+static Dif*
+newDifOnChng(Buf *buf, Cursor *curs)
 {
     Dif *dif;
     int eidx_dif, ch_i, ln_i;
@@ -127,10 +228,10 @@ pushUndo(Buf *buf, Cursor *curs)
                 buf->snapshot->items[dif->ln_sidx]))
             break;
     }
-    // if nothing changed there's nothing to push
+    // if nothing changed there's no dif
     if (dif->ln_sidx == buf->lns->len && dif->ln_sidx == buf->snapshot->len) {
         free(dif);
-        return;
+        return 0;
     }
 
     for (dif->ln_eidx = buf->lns->len - 1;
@@ -154,69 +255,28 @@ pushUndo(Buf *buf, Cursor *curs)
     dif->curs = xmalloc(sizeof(Cursor));
     *dif->curs = *curs;
 
-    updateSnapshot(buf);
-    ldPush(buf->undo, dif);
+    return dif;
 }
 
-void
-popUndo(Buf *buf, Cursor *curs)
+static void
+freeDif(Dif *dif)
 {
-    Dif *dif;
-    int ln_i, ch_i;
+    int i;
 
-    pushUndo(buf, curs);
-
-    if (buf->undo->len == 0) return;
-
-    dif = ldPop(buf->undo);
-
-    // destroy new lines
-    for (ln_i = dif->ln_eidx; ln_i >= dif->ln_sidx; ln_i--) {
-        freeLCh(buf->lns->items[ln_i]);
-        llchRm(buf->lns, ln_i);
-    }
-
-    // replace with old lines
-    for (ln_i = 0; ln_i < dif->lns->len; ln_i++) {
-        llchIns(buf->lns, dif->ln_sidx + ln_i, initLCh());
-        for (ch_i = 0;
-                ch_i < dif->lns->items[ln_i]->len;
-                ch_i++) {
-            lchPush(buf->lns->items[dif->ln_sidx + ln_i],
-                    dif->lns->items[ln_i]->items[ch_i]);
-        }
-    }
-
-    // update the cursor
-    *curs = *dif->curs;
-
-    updateSnapshot(buf);
-    ldPush(buf->redo, dif);
-}
-
-void
-popRedo(Buf *buf)
-{
-    buf = buf;
-}
-
-void
-clearRedo(Buf *buf)
-{
-    buf = buf;
+    for (i = 0; i < dif->lns->len; i++)
+        freeLCh(dif->lns->items[i]);
+    free(dif->curs);
+    freeLLCh(dif->lns);
+    free(dif);
 }
 
 static void
 freeLDifContents(LDif *ldif)
 {
-    int i, j;
+    int i;
 
     for (i = 0; i < ldif->len; i++) {
-        for (j = 0; j < ldif->items[i]->lns->len; j++)
-            freeLCh(ldif->items[i]->lns->items[j]);
-        free(ldif->items[i]->curs);
-        freeLLCh(ldif->items[i]->lns);
-        free(ldif->items[i]);
+        freeDif(ldif->items[i]);
     }
 }
 

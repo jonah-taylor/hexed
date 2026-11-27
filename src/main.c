@@ -37,6 +37,7 @@ main(int argc, char *argv[])
     CmdStat cmdstat;
     int i, isnum_arg1;
 
+    // if the first arg is a number run the client program
     if (argc > 1) {
         isnum_arg1 = 1;
         for (i = 0; i < (int)strlen(argv[1]); i++) {
@@ -73,6 +74,7 @@ main(int argc, char *argv[])
 
     app->tiler = initTiler(app->lbufs->items[0]);
 
+    // attach extra args as buffers
     if (argc > 1)
         client(app->port, argc - 1, (argv + 1));
 
@@ -137,7 +139,7 @@ tryCmd(App *app, Cmd *c)
     case '\t':
         app->mode = EDITING;
         setCursorBlock();
-        pushUndo(tile->buf, tile->curs);
+        pushUndo(tile->buf, tile->curs, 1);
         return USED;
     case '\x08': // backspace
     case '\x7f':
@@ -212,7 +214,7 @@ tryCmd(App *app, Cmd *c)
         if (app->mode == LNHIGHLIGHT) {
             tryCmd(app, &(Cmd){.keys = "d", .klen = 1, .num = 0});
             app->mode = TYPING;
-            setCursorBlock();
+            setCursorBar();
             return USED;
         }
         if (c->klen == 1) return INCOMPLETE;
@@ -352,6 +354,8 @@ tryCmd(App *app, Cmd *c)
         default: shiftKeysLeft(app->cg, c->klen - 1); return RERUN;
         }
 
+    case 'r': popRedo(tile->buf, tile->curs); return USED;
+
     case 'R': app->mode = (app->mode == RESIZING) ? EDITING : RESIZING; return USED;
 
     case 's':
@@ -442,7 +446,7 @@ tryCmd(App *app, Cmd *c)
         return USED;
 
     case ' ': app->mode = TYPING; setCursorBar();
-            pushUndo(tile->buf, tile->curs); return USED;
+            pushUndo(tile->buf, tile->curs, 1); return USED;
 
     case '<': unindentLnFront(tile); return USED;
     case '>': indentLnFront(tile); return USED;

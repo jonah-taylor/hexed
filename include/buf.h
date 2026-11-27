@@ -28,8 +28,8 @@ void freeBuf(Buf *buf);
 void loadFile(Buf *buf, char *fname);
 void loadBufList(Buf *buf, LBuf *lbuf);
 
-void pushUndo(Buf *buf, Cursor *curs);
+void pushUndo(Buf *buf, Cursor *curs, int clear_redo);
 void popUndo(Buf *buf, Cursor *curs);
 
-void popRedo(Buf *buf);
+void popRedo(Buf *buf, Cursor *curs);
 void clearRedo(Buf *buf);
